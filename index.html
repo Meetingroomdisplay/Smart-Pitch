@@ -16,7 +16,6 @@
         s.src=src; s.defer=false; s.async=false;
         document.head.appendChild(s);
       }
-      // Chart.js
       window.addEventListener('load', function(){
         if (!window.Chart){
           add('https://unpkg.com/chart.js@4.4.1/dist/chart.umd.min.js');
@@ -1337,576 +1336,291 @@
     }
   </style>
 
+  <style>
+    /* ===== Extra mobile tuning (demo build) ===== */
+    @media (max-width: 520px){
+      body{ font-size: 13px; }
+      .wrap{ padding: 10px; }
+      .topbar{
+        grid-template-columns: 1fr;
+        justify-items: center;
+        min-height: auto;
+        padding: 10px 12px;
+        gap: 10px;
+      }
+      .brand{ grid-column:auto; }
+      .chip{ grid-column:auto; justify-self:center; }
+      .brand img{ height: 58px; }
+      .tabs{
+        justify-content:flex-start;
+        overflow-x:auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 6px;
+      }
+      .tabbtn{
+        flex: 0 0 auto;
+        padding: 10px 12px;
+        font-size: 13px;
+        border-radius: 14px;
+      }
+      .panel{ padding: 10px; }
+      .card{ padding: 12px; }
+      .chartWrap{ height: 260px; }
+      .chartWrapSmall{ height: 250px; }
+      /* Tables: allow horizontal scroll cleanly */
+      .tableWrap{ max-height: 420px; }
+      table.dbTable{ min-width: 820px; }
+      /* Calendar cells tighter */
+      .dayCell{ min-height: 96px; padding: 10px; }
+    }
+  </style>
+
+
 <script>
-/* ==========================================================
-   SmartPitch DEMO / Simulation Adapter (static-site friendly)
-   - Intercepts fetch('/api/...') calls and serves mock data
-   - Generates realistic, smoothly changing values + scenarios
-   ========================================================== */
+/* ===== Demo API adapter (static hosting) ===== */
 (function(){
-  const DEMO_MODE = true; // set false if you later wire a real backend
-  if (!DEMO_MODE) return;
+  const DEMO_MODE = true;
+  if(!DEMO_MODE) return;
 
-  // --- Helpers ---
-  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-  const lerp = (a,b,t) => a + (b-a)*t;
-  const rnd = (a,b) => a + Math.random()*(b-a);
-  const nowISO = () => new Date().toISOString();
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+  const lerp=(a,b,t)=>a+(b-a)*t;
+  const rnd=(a,b)=>a+Math.random()*(b-a);
+  const nowISO=()=>new Date().toISOString();
 
-  // For GitHub Pages etc, absolute "/api" would otherwise 404.
-  // We'll intercept anything that looks like an API call.
-  const isApi = (u) => {
-    try {
-      const s = (typeof u === "string") ? u : (u && u.url ? u.url : "");
-      return s.startsWith("/api/") || s.includes("/api/") || s === "./logoforhtml.svg";
-    } catch(e){ return false; }
-  };
-
-  // --- Scenario model (best for demos) ---
-  const SCENARIOS = [
-    {
-      key: "frost",
-      name: "Frost risk (cold + calm)",
-      baseOutside: -1.2,
-      wind: 1.2,
-      cloud: 20,
-      humidity: 92,
-      precip: 0.0
-    },
-    {
-      key: "windy",
-      name: "Windy night (high heat loss)",
-      baseOutside: 1.5,
-      wind: 9.0,
-      cloud: 65,
-      humidity: 86,
-      precip: 0.2
-    },
-    {
-      key: "mild",
-      name: "Mild & cloudy (low demand)",
-      baseOutside: 6.0,
-      wind: 3.2,
-      cloud: 90,
-      humidity: 80,
-      precip: 0.0
-    }
+  const SCENARIOS=[
+    {key:"frost", name:"Frost risk", baseOutside:-1.2, wind:1.2, cloud:20, humidity:92, precip:0.0},
+    {key:"windy", name:"Windy night", baseOutside:1.5, wind:9.0, cloud:65, humidity:86, precip:0.2},
+    {key:"mild",  name:"Mild & cloudy", baseOutside:6.0, wind:3.2, cloud:90, humidity:80, precip:0.0}
   ];
+  const Demo={scenarioKey:"frost", heatEnabled:true, mode:"AUTO", t0:Date.now(), energyKwh:0};
 
-  const Demo = {
-    scenarioKey: "frost",
-    heatEnabled: true,
-    mode: "AUTO",
-    _t0: Date.now(),
-    _lastToggle: Date.now(),
-    _energyKwh: 0,
-    _sessionId: 21
-  };
-
-  function scenario(){ return SCENARIOS.find(s=>s.key===Demo.scenarioKey) || SCENARIOS[0]; }
-
-  function timeMinutes(){
-    return (Date.now() - Demo._t0) / 60000;
-  }
-
-  // Smooth outside temp variation over time
+  function scenario(){ return SCENARIOS.find(s=>s.key===Demo.scenarioKey)||SCENARIOS[0]; }
+  function tMin(){ return (Date.now()-Demo.t0)/60000; }
   function outsideTemp(){
-    const s = scenario();
-    const t = timeMinutes();
-    const diurnal = Math.sin((t/60)*Math.PI*2) * 0.7; // gentle swing
-    const noise = Math.sin(t*0.35) * 0.15 + (Math.random()-0.5)*0.05;
-    return s.baseOutside + diurnal + noise;
+    const s=scenario(); const t=tMin();
+    return s.baseOutside + Math.sin((t/60)*Math.PI*2)*0.7 + Math.sin(t*0.35)*0.15;
   }
-
-  function feelsLike(tempC, wind){
-    // rough wind chill-ish feel for demo (NOT meteorologically strict)
-    return tempC - clamp(wind*0.12, 0, 2.5);
-  }
-
-  // Field temps respond slowly to heating / weather
-  function fieldTemps(){
-    const t = timeMinutes();
-    const out = outsideTemp();
-    const heat = Demo.heatEnabled ? 1 : 0;
-    // target soil temps: heat drives upward, outside drags down slowly
-    const target8 = lerp(out + 2.0, 12.5, heat) + (scenario().cloud>70?0.2:-0.2);
-    const target25 = lerp(out + 3.0, 11.0, heat);
-
-    // "inertia" via exponential approach
-    // create deterministic-ish smooth values using sin waves instead of storing state
-    const a8  = 1 - Math.exp(-t/40);   // 8cm responds faster
-    const a25 = 1 - Math.exp(-t/85);   // 25cm slower
-    const base8  = lerp(out + 3.5, target8, a8)  + Math.sin(t*0.12)*0.12;
-    const base25 = lerp(out + 4.2, target25, a25) + Math.sin(t*0.09)*0.08;
-
-    return {
-      avg_field_8cm_c: Number((base8).toFixed(2)),
-      avg_field_25cm_c: Number((base25).toFixed(2))
-    };
-  }
-
-  function flowReturn(){
-    // If heating on, sec flow rises with "wish" temp; otherwise near ambient
-    const out = outsideTemp();
-    const heat = Demo.heatEnabled;
-    const wish = wishTemp();
-    const secFlow = heat ? clamp(wish + rnd(-0.6,0.6), 15, 40) : clamp(out + 6 + rnd(-0.4,0.4), 8, 18);
-    const secReturn = heat ? secFlow - clamp(3.0 + scenario().wind*0.18 + rnd(-0.4,0.4), 2.0, 10.0) : secFlow - rnd(0.3,1.2);
-    const priFlow = heat ? secFlow + rnd(2.5,4.0) : secFlow + rnd(0.5,1.5);
-    const priReturn = heat ? priFlow - rnd(2.0,4.5) : priFlow - rnd(0.5,1.5);
-    return {
-      sec_flow_c: Number(secFlow.toFixed(2)),
-      sec_return_c: Number(secReturn.toFixed(2)),
-      pri_flow_c: Number(priFlow.toFixed(2)),
-      pri_return_c: Number(priReturn.toFixed(2))
-    };
-  }
-
   function wishTemp(){
-    // simple curve: colder outside => higher desired flow
-    const out = outsideTemp();
-    // map out temp roughly (-10..6) => wish (34..16)
-    const w = lerp(34, 16, clamp((out + 10) / 16, 0, 1));
-    return Number(w.toFixed(1));
+    const out=outsideTemp();
+    return Number(lerp(34,16,clamp((out+10)/16,0,1)).toFixed(1));
   }
-
-  function leafFrost(){
-    // More likely when cold and clear, and heating off
-    const out = outsideTemp();
-    const s = scenario();
-    const risk = (out < 1.0 && s.cloud < 40 && s.humidity > 85 && !Demo.heatEnabled);
-    // add a little stochastic behaviour
-    if (!risk) return false;
-    return (Math.random() < 0.65);
+  function fieldTemps(){
+    const out=outsideTemp(); const heat=Demo.heatEnabled?1:0; const t=tMin();
+    const target8=lerp(out+2.0,12.5,heat);
+    const target25=lerp(out+3.0,11.0,heat);
+    const a8=1-Math.exp(-t/40), a25=1-Math.exp(-t/85);
+    return {
+      avg_field_8cm_c:Number(lerp(out+3.5,target8,a8).toFixed(2)),
+      avg_field_25cm_c:Number(lerp(out+4.2,target25,a25).toFixed(2)),
+    };
   }
-
-  function updateEnergy(){
-    // Pretend energy increases when heating is enabled
-    // 3.7MW at full is huge; for demo, accumulate kWh at ~800-1600 kW equivalent
-    const dtMin = 1; // we update roughly each minute in charts; safe enough
-    if (Demo.heatEnabled){
-      const kw = clamp(900 + scenario().wind*60 + rnd(-60,60), 700, 1700);
-      Demo._energyKwh += (kw * dtMin) / 60.0;
-    }
+  function flowReturn(){
+    const out=outsideTemp(); const heat=Demo.heatEnabled; const wish=wishTemp();
+    const secFlow=heat?clamp(wish+rnd(-0.6,0.6),15,40):clamp(out+6+rnd(-0.4,0.4),8,18);
+    const secReturn=heat?secFlow-clamp(3.0+scenario().wind*0.18+rnd(-0.4,0.4),2.0,10.0):secFlow-rnd(0.3,1.2);
+    const priFlow=heat?secFlow+rnd(2.5,4.0):secFlow+rnd(0.5,1.5);
+    const priReturn=heat?priFlow-rnd(2.0,4.5):priFlow-rnd(0.5,1.5);
+    return {sec_flow_c:+secFlow.toFixed(2), sec_return_c:+secReturn.toFixed(2), pri_flow_c:+priFlow.toFixed(2), pri_return_c:+priReturn.toFixed(2)};
   }
-
-  // --- API payload builders (match your NR API shapes) ---
   function api_status(){
-    const s = scenario();
-    const ft = fieldTemps();
-    const fr = flowReturn();
-    const out = outsideTemp();
-    const wind = s.wind + Math.sin(timeMinutes()*0.25)*0.6;
-    const cloud = clamp(s.cloud + Math.sin(timeMinutes()*0.18)*8, 0, 100);
-    const humidity = clamp(s.humidity + Math.sin(timeMinutes()*0.14)*4, 40, 100);
-
-    updateEnergy();
-
-    const latest_trend = {
-      ts: nowISO(),
-      leaf_frost: leafFrost(),
-      outside_temp_c: Number(out.toFixed(2)),
-      humidity_pct: Number(humidity.toFixed(0)),
-      wind_speed: Number(wind.toFixed(1)),
-      cloud_cover_pct: Number(cloud.toFixed(0)),
-      avg_field_8cm_c: ft.avg_field_8cm_c,
-      avg_field_25cm_c: ft.avg_field_25cm_c,
-      sec_flow_c: fr.sec_flow_c,
-      sec_return_c: fr.sec_return_c,
-      pri_flow_c: fr.pri_flow_c,
-      pri_return_c: fr.pri_return_c,
-      heat_enabled: Demo.heatEnabled,
-      mode: Demo.mode,
-      energy_kw: Demo.heatEnabled ? Number(clamp(1100 + wind*70, 700, 1800).toFixed(0)) : 0
-    };
-
-    const counts = {
-      trend_log: 81241,
-      weather_open_meteo: 168,
-      decisions: 317,
-      weather_last_fetch: nowISO()
-    };
-
-    const latest_decision = {
-      id: 317,
-      ts: nowISO(),
-      pitch_id: "P1",
-      mode: Demo.mode,
-      frost_risk: (out < 1.5 && cloud < 45),
-      confidence: Number(clamp(0.55 + (cloud<40?0.1:-0.05) + (wind>7?-0.05:0), 0.2, 0.9).toFixed(2)),
-      reason: (out < 1.5 && cloud < 45) ? "Clear skies + low temp ⇒ leaf frost risk" : "Risk low under current conditions"
-    };
-
-    const duration = 72;
-    const forecast_avg = Number((out + 1.8).toFixed(1));
-    const wish = wishTemp();
-
+    const s=scenario(); const ft=fieldTemps(); const fr=flowReturn();
+    const out=outsideTemp();
+    Demo.energyKwh += Demo.heatEnabled ? (clamp(900+s.wind*60+rnd(-60,60),700,1700)/60) : 0;
     return {
       server_time: new Date().toISOString().replace("T"," ").replace("Z","+00"),
-      latest_trend,
-      counts,
-      latest_decision,
-      forecast_avg,
-      wish_temp: wish,
-      forecast_settings: { duration, temp_type: "real" },
-      smartpitch_submode: "LEARNING",
-      slope_intervened: false,
-      slope_adjustment_total: 0,
-      session_active: true,
-      building_protect_active: false,
-      forecast_override_active: false
+      latest_trend:{
+        ts:nowISO(),
+        leaf_frost:(out<1.0 && s.cloud<40 && s.humidity>85 && !Demo.heatEnabled) ? (Math.random()<0.65) : false,
+        outside_temp_c:+out.toFixed(2),
+        humidity_pct:+clamp(s.humidity+Math.sin(tMin()*0.14)*4,40,100).toFixed(0),
+        wind_speed:+clamp(s.wind+Math.sin(tMin()*0.25)*0.6,0,14).toFixed(1),
+        cloud_cover_pct:+clamp(s.cloud+Math.sin(tMin()*0.18)*8,0,100).toFixed(0),
+        avg_field_8cm_c:ft.avg_field_8cm_c,
+        avg_field_25cm_c:ft.avg_field_25cm_c,
+        sec_flow_c:fr.sec_flow_c,
+        sec_return_c:fr.sec_return_c,
+        pri_flow_c:fr.pri_flow_c,
+        pri_return_c:fr.pri_return_c,
+        heat_enabled:Demo.heatEnabled,
+        mode:Demo.mode,
+        energy_kw: Demo.heatEnabled ? +clamp(1100+s.wind*70,700,1800).toFixed(0) : 0
+      },
+      counts:{ trend_log:81241, weather_open_meteo:168, decisions:317, weather_last_fetch:nowISO() },
+      latest_decision:{ id:317, ts:nowISO(), pitch_id:"P1", mode:Demo.mode, frost_risk:(out<1.5 && s.cloud<45), confidence:+clamp(0.55+(s.cloud<40?0.1:-0.05),0.2,0.9).toFixed(2), reason:(out<1.5 && s.cloud<45)?"Clear skies + low temp ⇒ leaf frost risk":"Risk low under current conditions" },
+      forecast_avg:+(out+1.8).toFixed(1),
+      wish_temp:wishTemp(),
+      forecast_settings:{ duration:72, temp_type:"real" },
+      smartpitch_submode:"LEARNING",
+      slope_intervened:false,
+      slope_adjustment_total:0,
+      session_active:true,
+      building_protect_active:false,
+      forecast_override_active:false
     };
   }
-
   function api_timeseries(hours){
-    hours = clamp(parseInt(hours||24,10)||24, 1, 8760);
-    // build one point per 10 minutes for the chosen hours
-    const points = Math.min(720, Math.max(24, Math.floor((hours*60)/10)));
-    const series = [];
-    const now = Date.now();
-    for (let i = points-1; i >= 0; i--){
-      const ts = new Date(now - i*10*60*1000).toISOString();
-      // rewind outside temp slightly
-      const tMin = timeMinutes() - i*10;
-      const s = scenario();
-      const diurnal = Math.sin((tMin/60)*Math.PI*2) * 0.7;
-      const out = s.baseOutside + diurnal + Math.sin(tMin*0.35)*0.15;
-      const heat = Demo.heatEnabled ? 1 : 0;
-      const a8  = 1 - Math.exp(-(timeMinutes())/40);
-      const field8 = lerp(out + 3.5, 12.5, heat) * (0.9 + 0.1*a8) + Math.sin(tMin*0.12)*0.12;
-
-      series.push({
-        ts,
-        outside_temp_c: Number(out.toFixed(2)),
-        avg_field_8cm_c: Number(field8.toFixed(2)),
-        heat_enabled: Demo.heatEnabled,
-        mode: Demo.mode
-      });
+    hours=clamp(parseInt(hours||24,10)||24,1,8760);
+    const points=Math.min(720,Math.max(24,Math.floor((hours*60)/10)));
+    const series=[]; const now=Date.now(); const s=scenario();
+    for(let i=points-1;i>=0;i--){
+      const ts=new Date(now-i*10*60*1000).toISOString();
+      const out=s.baseOutside + Math.sin(((tMin()-i*10)/60)*Math.PI*2)*0.7;
+      series.push({ ts, outside_temp_c:+out.toFixed(2), avg_field_8cm_c: +(out+7.0).toFixed(2), heat_enabled:Demo.heatEnabled, mode:Demo.mode });
     }
     return { hours, series };
   }
-
   function api_forecast(hours){
-    hours = clamp(parseInt(hours||168,10)||168, 1, 336);
-    const series = [];
-    const s = scenario();
-    const start = Date.now();
-    for (let h=0; h<=hours; h++){
-      const ts = new Date(start + h*3600*1000).toISOString();
-      const diurnal = Math.sin((h/24)*Math.PI*2) * 0.9;
-      const temp = s.baseOutside + 1.2 + diurnal + Math.sin(h*0.3)*0.2;
-      const wind = clamp(s.wind + Math.sin(h*0.22)*0.8, 0, 14);
-      const cloud = clamp(s.cloud + Math.sin(h*0.17)*10, 0, 100);
-      const hum = clamp(s.humidity + Math.sin(h*0.15)*6, 40, 100);
-      const precip = (cloud > 80 && hum > 85) ? Number(clamp(s.precip + Math.random()*0.4, 0, 2.5).toFixed(2)) : 0;
-      series.push({
-        ts,
-        temp_c: Number(temp.toFixed(1)),
-        humidity_pct: Number(hum.toFixed(0)),
-        wind_speed: Number(wind.toFixed(1)),
-        cloud_cover_pct: Number(cloud.toFixed(0)),
-        precip_mm: precip,
-        feels_like_c: Number(feelsLike(temp, wind).toFixed(1))
-      });
+    hours=clamp(parseInt(hours||168,10)||168,1,336);
+    const s=scenario(); const series=[]; const start=Date.now();
+    for(let h=0; h<=hours; h++){
+      const ts=new Date(start+h*3600*1000).toISOString();
+      const di=Math.sin((h/24)*Math.PI*2)*0.9;
+      const temp=s.baseOutside+1.2+di;
+      const wind=clamp(s.wind+Math.sin(h*0.22)*0.8,0,14);
+      const cloud=clamp(s.cloud+Math.sin(h*0.17)*10,0,100);
+      const hum=clamp(s.humidity+Math.sin(h*0.15)*6,40,100);
+      const precip=(cloud>80 && hum>85)?+clamp(s.precip+Math.random()*0.4,0,2.5).toFixed(2):0;
+      series.push({ ts, temp_c:+temp.toFixed(1), humidity_pct:+hum.toFixed(0), wind_speed:+wind.toFixed(1), cloud_cover_pct:+cloud.toFixed(0), precip_mm:precip, feels_like_c:+(temp-clamp(wind*0.12,0,2.5)).toFixed(1) });
     }
-    return {
-      hours,
-      now_ts: new Date().toISOString(),
-      max_ts: new Date(start + hours*3600*1000).toISOString(),
-      hours_behind: 0,
-      stale: false,
-      series
-    };
+    return { hours, now_ts:nowISO(), max_ts:new Date(start+hours*3600*1000).toISOString(), hours_behind:0, stale:false, series };
   }
-
   function api_learning_sessions(days){
-    days = clamp(parseInt(days||365,10)||365, 1, 3650);
-    // Provide a plausible set of recent sessions
-    const rows = [];
-    const now = Date.now();
-    const n = 26;
-    for (let i=0; i<n; i++){
-      const start = new Date(now - (i*3 + 1)*24*3600*1000 - rnd(0,8)*3600*1000);
-      const durH = rnd(2.5, 6.5);
-      const end = new Date(start.getTime() + durH*3600*1000);
-      const playableBy = new Date(end.getTime() + rnd(0.5,2.0)*3600*1000);
-      const pass = Math.random() > (scenario().key==="frost" ? 0.35 : 0.25);
-      const margin = pass ? Math.round(rnd(10, 120)) : -Math.round(rnd(10, 240));
-      rows.push({
-        session_id: Demo._sessionId - i,
-        pitch_id: (i%2===0) ? "P1" : "P2",
-        start_ts: start.toISOString(),
-        end_ts: end.toISOString(),
-        playable_by_ts: playableBy.toISOString(),
-        result: pass ? "PASS" : "FAIL",
-        margin_minutes: margin,
-        energy_kwh: Number((rnd(1200, 5400)).toFixed(0)),
-        notes: pass ? "Cleared in time" : "Late clearance under adverse conditions"
-      });
+    days=clamp(parseInt(days||365,10)||365,1,3650);
+    const rows=[]; const now=Date.now(); const n=26;
+    for(let i=0;i<n;i++){
+      const start=new Date(now-(i*3+1)*24*3600*1000-rnd(0,8)*3600*1000);
+      const durH=rnd(2.5,6.5);
+      const end=new Date(start.getTime()+durH*3600*1000);
+      const playableBy=new Date(end.getTime()+rnd(0.5,2.0)*3600*1000);
+      const pass=Math.random()>(scenario().key==="frost"?0.35:0.25);
+      const margin=pass?Math.round(rnd(10,120)):-Math.round(rnd(10,240));
+      rows.push({ session_id: 200-i, pitch_id:(i%2===0)?"P1":"P2", start_ts:start.toISOString(), end_ts:end.toISOString(), playable_by_ts:playableBy.toISOString(), result:pass?"PASS":"FAIL", margin_minutes:margin, energy_kwh:+rnd(1200,5400).toFixed(0), notes:pass?"Cleared in time":"Late clearance under adverse conditions" });
     }
     return { days, rows };
   }
-
   function api_learning_recommendation(){
-    // Next training 10:00 tomorrow with 60 min buffer
-    const now = new Date();
-    const tomorrow = new Date(now.getTime() + 24*3600*1000);
+    const now=new Date(); const tomorrow=new Date(now.getTime()+24*3600*1000);
     tomorrow.setUTCHours(10,0,0,0);
-    const buffer_minutes = 60;
-    const playable_by_ts = new Date(tomorrow.getTime() - buffer_minutes*60*1000);
-
-    const out = outsideTemp();
-    const s = scenario();
-    const temp_band = (out <= -2) ? "T<=-2" : (out<=0) ? "T-2..0" : (out<=2) ? "T0..2" : (out<=5) ? "T2..5" : "T>5";
-    const wind_band = (s.wind < 2) ? "W0..2" : (s.wind < 5) ? "W2..5" : (s.wind < 8) ? "W5..8" : "W>8";
-    const cloud_band = (s.cloud < 25) ? "C0..25" : (s.cloud < 75) ? "C25..75" : "C75..100";
-
-    // suggest start offset based on scenario
-    const base = (s.key==="frost") ? 420 : (s.key==="windy") ? 360 : 240;
-    const buffer = (s.key==="windy") ? 60 : 45;
-    const start_offset_minutes = base + buffer;
-    const suggested_start_ts = new Date(playable_by_ts.getTime() - start_offset_minutes*60*1000);
-
-    const used_level = (s.key==="mild") ? 3 : 2;
-    const nMatches = (s.key==="mild") ? 14 : 6;
-    const nPass = Math.round(nMatches * (s.key==="frost" ? 0.55 : 0.65));
-    const confidence = (used_level===3 && nMatches>=10) ? 0.8 : (used_level===3) ? 0.6 : 0.5;
-
+    const buffer_minutes=60;
+    const playable=new Date(tomorrow.getTime()-buffer_minutes*60*1000);
+    const s=scenario(); const out=outsideTemp();
+    const temp_band=(out<=-2)?"T<=-2":(out<=0)?"T-2..0":(out<=2)?"T0..2":(out<=5)?"T2..5":"T>5";
+    const wind_band=(s.wind<2)?"W0..2":(s.wind<5)?"W2..5":(s.wind<8)?"W5..8":"W>8";
+    const cloud_band=(s.cloud<25)?"C0..25":(s.cloud<75)?"C25..75":"C75..100";
+    const base=(s.key==="frost")?420:(s.key==="windy")?360:240;
+    const buf=(s.key==="windy")?60:45;
+    const offset=base+buf;
+    const suggested=new Date(playable.getTime()-offset*60*1000);
     return {
-      next_training: {
-        training_start: tomorrow.toISOString(),
-        buffer_minutes,
-        playable_by_ts: playable_by_ts.toISOString()
-      },
-      current_bands: {
-        playable_by_ts: playable_by_ts.toISOString(),
-        temp_band,
-        wind_band,
-        cloud_band
-      },
-      matches: {
-        n: nMatches,
-        pass: nPass,
-        pass_rate: Number((100*nPass/nMatches).toFixed(1)),
-        used_level,
-        worst_fail_late_min: (s.key==="frost") ? 180 : 90
-      },
-      recommendation: {
-        start_offset_minutes,
-        suggested_start_ts: suggested_start_ts.toISOString(),
-        confidence: Number(confidence.toFixed(2)),
-        reason: (s.key==="frost")
-          ? "Historically needs longer lead time under clear/cold conditions"
-          : (s.key==="windy")
-            ? "High wind increases heat loss — add buffer"
-            : "Mild conditions — shorter lead time generally sufficient"
-      }
+      next_training:{ training_start:tomorrow.toISOString(), buffer_minutes, playable_by_ts:playable.toISOString() },
+      current_bands:{ playable_by_ts:playable.toISOString(), temp_band, wind_band, cloud_band },
+      matches:{ n:(s.key==="mild")?14:6, pass:(s.key==="mild")?9:4, pass_rate:(s.key==="mild")?64.3:66.7, used_level:(s.key==="mild")?3:2, worst_fail_late_min:(s.key==="frost")?180:90 },
+      recommendation:{ start_offset_minutes:offset, suggested_start_ts:suggested.toISOString(), confidence:(s.key==="mild")?0.8:0.55, reason:(s.key==="frost")?"Historically needs longer lead time under clear/cold conditions":(s.key==="windy")?"High wind increases heat loss — add buffer":"Mild conditions — shorter lead time generally sufficient" }
     };
   }
 
-  function api_mode_get(){ return { mode: Demo.mode, heat_enabled: Demo.heatEnabled, demo: true }; }
-  function api_mode_post(body){
-    try{
-      if (body && typeof body === "object"){
-        if (typeof body.mode === "string") Demo.mode = body.mode.toUpperCase();
-        if (typeof body.heat_enabled === "boolean") Demo.heatEnabled = body.heat_enabled;
-      }
-    }catch(e){}
-    return api_mode_get();
-  }
-
-  function api_rate_get(){ return { gas_p_per_kwh: 7.5, electricity_p_per_kwh: 28.0, demo:true }; }
-  function api_rate_post(body){ return api_rate_get(); }
-  function api_cost_get(){ return { session_energy_kwh: Number(Demo._energyKwh.toFixed(1)), est_cost_gbp: Number((Demo._energyKwh*0.075).toFixed(2)), demo:true }; }
-
-  function api_schedule_get(month){
-    // simple training schedule blocks
-    const items = [];
-    const base = new Date(month ? (month+"-01T10:00:00Z") : new Date().toISOString());
-    const y = base.getUTCFullYear();
-    const m = base.getUTCMonth();
-    for (let d=1; d<=28; d+=4){
-      const dt = new Date(Date.UTC(y,m,d,10,0,0));
-      items.push({ id: `${y}${m+1}${d}`, training_start: dt.toISOString(), buffer_minutes: 60, pitch_id: "P1", title: "First Team Training" });
-    }
-    return { month: `${y}-${String(m+1).padStart(2,"0")}`, items };
-  }
-  function api_schedule_post(body){ return { ok:true, demo:true }; }
-
-  // --- Response factory ---
-  function jsonResponse(obj, status=200){
-    return new Response(JSON.stringify(obj), {
-      status,
-      headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }
-    });
-  }
-
-  async function readBody(req){
-    try{
-      if (!req) return null;
-      if (req.bodyUsed) return null;
-      const ct = req.headers && req.headers.get ? (req.headers.get("content-type")||"") : "";
-      if (ct.includes("application/json")){
-        return await req.json();
-      }
-      const txt = await req.text();
-      try { return JSON.parse(txt); } catch(e){ return txt; }
-    }catch(e){ return null; }
-  }
-
-  // --- fetch interception ---
-  const _fetch = window.fetch.bind(window);
+  const _fetch=window.fetch.bind(window);
   window.fetch = async function(input, init){
-    const url = (typeof input === "string") ? input : (input && input.url ? input.url : "");
-    const method = (init && init.method) ? String(init.method).toUpperCase() : (input && input.method ? String(input.method).toUpperCase() : "GET");
+    const url=(typeof input==="string")?input:(input&&input.url?input.url:"");
+    const method=(init&&init.method)?String(init.method).toUpperCase():"GET";
+    const u=new URL(url, window.location.href);
+    const path=u.pathname;
 
-    if (!isApi(url)) return _fetch(input, init);
+    // only intercept /api/*
+    if(!path.startsWith("/api/")) return _fetch(input, init);
 
-    // Provide a built-in logo fallback (so ./logoforhtml.svg doesn't break on static hosting)
-    if (url === "./logoforhtml.svg"){
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="420" height="140" viewBox="0 0 420 140">
-        <defs>
-          <linearGradient id="g" x1="0" x2="1">
-            <stop offset="0" stop-color="#2ee59d"/><stop offset="1" stop-color="#7aa7ff"/>
-          </linearGradient>
-          <filter id="f" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#000" flood-opacity="0.55"/>
-          </filter>
-        </defs>
-        <rect x="10" y="14" rx="26" ry="26" width="400" height="112" fill="rgba(0,0,0,0.22)" stroke="rgba(255,255,255,0.22)"/>
-        <text x="210" y="78" text-anchor="middle" font-family="system-ui,Segoe UI,Roboto" font-size="40" font-weight="900" fill="url(#g)" filter="url(#f)">SmartPitch</text>
-        <text x="210" y="104" text-anchor="middle" font-family="system-ui,Segoe UI,Roboto" font-size="12" font-weight="700" fill="rgba(255,255,255,0.55)">DEMO · SIMULATION MODE</text>
-      </svg>`;
-      return new Response(svg, { status:200, headers:{ "content-type":"image/svg+xml" }});
+    function j(o, status=200){
+      return new Response(JSON.stringify(o), {status, headers:{"content-type":"application/json; charset=utf-8","cache-control":"no-store"}});
     }
 
-    // route
-    const u = new URL(url, window.location.origin);
-    const path = u.pathname;
-
-    // GETs
-    if (method === "GET"){
-      if (path === "/api/ping") return jsonResponse({ ok:true, ts: nowISO(), demo:true });
-      if (path === "/api/status") return jsonResponse(api_status());
-      if (path === "/api/timeseries") return jsonResponse(api_timeseries(u.searchParams.get("hours")));
-      if (path === "/api/forecast") return jsonResponse(api_forecast(u.searchParams.get("hours")));
-      if (path === "/api/learning/sessions") return jsonResponse(api_learning_sessions(u.searchParams.get("days")));
-      if (path === "/api/learning/recommendation") return jsonResponse(api_learning_recommendation());
-      if (path === "/api/mode") return jsonResponse(api_mode_get());
-      if (path === "/api/rate") return jsonResponse(api_rate_get());
-      if (path === "/api/cost") return jsonResponse(api_cost_get());
-      if (path === "/api/schedule") return jsonResponse(api_schedule_get(u.searchParams.get("month")));
-      if (path === "/api/gui") return jsonResponse({ ok:true, demo:true }); // not used in static mode
+    if(method==="GET"){
+      if(path==="/api/ping") return j({ok:true,ts:nowISO(),demo:true});
+      if(path==="/api/status") return j(api_status());
+      if(path==="/api/timeseries") return j(api_timeseries(u.searchParams.get("hours")));
+      if(path==="/api/forecast") return j(api_forecast(u.searchParams.get("hours")));
+      if(path==="/api/learning/sessions") return j(api_learning_sessions(u.searchParams.get("days")));
+      if(path==="/api/learning/recommendation") return j(api_learning_recommendation());
+      if(path==="/api/mode") return j({mode:Demo.mode, heat_enabled:Demo.heatEnabled, demo:true});
+      if(path==="/api/rate") return j({gas_p_per_kwh:7.5,electricity_p_per_kwh:28.0,demo:true});
+      if(path==="/api/cost") return j({session_energy_kwh:+Demo.energyKwh.toFixed(1), est_cost_gbp:+(Demo.energyKwh*0.075).toFixed(2), demo:true});
+      if(path==="/api/schedule") return j({month:u.searchParams.get("month")||"", items:[]});
     }
-
-    // POSTs
-    if (method === "POST"){
-      if (path === "/api/mode"){
-        const body = await (async()=>{ 
-          if (input && typeof input !== "string") return await readBody(input);
-          if (init && init.body){
-            try { return JSON.parse(init.body); } catch(e){ return init.body; }
-          }
-          return null;
-        })();
-        return jsonResponse(api_mode_post(body));
+    if(method==="POST"){
+      if(path==="/api/mode"){
+        try{
+          const body = init && init.body ? JSON.parse(init.body) : {};
+          if(typeof body.mode==="string") Demo.mode=body.mode.toUpperCase();
+          if(typeof body.heat_enabled==="boolean") Demo.heatEnabled=body.heat_enabled;
+        }catch(e){}
+        return j({mode:Demo.mode, heat_enabled:Demo.heatEnabled, demo:true});
       }
-      if (path === "/api/rate") return jsonResponse(api_rate_post(null));
-      if (path === "/api/schedule") return jsonResponse(api_schedule_post(null));
+      return j({ok:true,demo:true});
     }
-
-    // default
-    return jsonResponse({ error:"Demo API: endpoint not implemented", path, method }, 404);
+    return j({error:"Demo API endpoint not implemented", path, method}, 404);
   };
 
-  // --- Tiny demo control dock (scenario buttons) ---
+  // Demo dock
   function mountDock(){
-    const dock = document.createElement("div");
-    dock.id = "demoDock";
-    dock.style.position = "fixed";
-    dock.style.right = "14px";
-    dock.style.bottom = "14px";
-    dock.style.zIndex = "9998";
-    dock.style.border = "1px solid rgba(255,255,255,0.18)";
-    dock.style.background = "rgba(0,0,0,0.30)";
-    dock.style.backdropFilter = "blur(10px)";
-    dock.style.borderRadius = "18px";
-    dock.style.padding = "10px";
-    dock.style.boxShadow = "0 18px 40px rgba(0,0,0,0.38)";
-    dock.style.maxWidth = "320px";
-
+    const dock=document.createElement("div");
+    dock.style.position="fixed"; dock.style.right="12px"; dock.style.bottom="12px";
+    dock.style.zIndex="9998"; dock.style.maxWidth="320px";
+    dock.style.border="1px solid rgba(255,255,255,0.18)";
+    dock.style.background="rgba(0,0,0,0.30)";
+    dock.style.backdropFilter="blur(10px)";
+    dock.style.borderRadius="18px";
+    dock.style.padding="10px";
+    dock.style.boxShadow="0 18px 40px rgba(0,0,0,0.38)";
     dock.innerHTML = `
       <div style="display:flex;align-items:center;gap:10px;justify-content:space-between;margin-bottom:8px;">
-        <div style="font-weight:950;letter-spacing:0.2px;">DEMO · Simulation</div>
-        <button id="demoMinBtn" style="padding:6px 10px;border-radius:999px;">–</button>
+        <div style="font-weight:950;">DEMO · Simulation</div>
+        <button id="dMin" style="padding:6px 10px;border-radius:999px;">–</button>
       </div>
-      <div id="demoBody">
+      <div id="dBody">
         <div style="color:rgba(255,255,255,0.70);font-size:12px;font-weight:800;margin:0 0 6px 0;">Scenario</div>
-        <div id="demoScenarioBtns" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;"></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between;">
-          <button id="demoHeatBtn" class="active" style="flex:1;min-width:130px;">Heating: ON</button>
-          <button id="demoModeBtn" style="flex:1;min-width:130px;">Mode: AUTO</button>
-        </div>
-        <div style="margin-top:8px;color:rgba(255,255,255,0.55);font-size:11px;font-weight:800;">
-          Tip: use scenarios to show how wind/cloud/temp affect efficiency.
+        <div id="dSc" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button id="dHeat" style="flex:1;min-width:130px;">Heating: ON</button>
+          <button id="dMode" style="flex:1;min-width:130px;">Mode: AUTO</button>
         </div>
       </div>
     `;
     document.body.appendChild(dock);
 
-    const btnWrap = dock.querySelector("#demoScenarioBtns");
+    const scWrap=dock.querySelector("#dSc");
     SCENARIOS.forEach(sc=>{
-      const b = document.createElement("button");
-      b.textContent = sc.name;
-      b.style.padding = "8px 10px";
-      b.style.borderRadius = "14px";
-      b.style.fontWeight = "950";
-      b.style.fontSize = "12px";
-      if (sc.key === Demo.scenarioKey) b.classList.add("active");
+      const b=document.createElement("button");
+      b.textContent=sc.name;
+      b.style.padding="8px 10px";
+      b.style.borderRadius="14px";
+      b.style.fontWeight="950";
+      b.style.fontSize="12px";
+      b.className=""+(sc.key===Demo.scenarioKey?"active":"");
       b.addEventListener("click", ()=>{
-        Demo.scenarioKey = sc.key;
-        [...btnWrap.querySelectorAll("button")].forEach(x=>x.classList.remove("active"));
+        Demo.scenarioKey=sc.key;
+        [...scWrap.querySelectorAll("button")].forEach(x=>x.classList.remove("active"));
         b.classList.add("active");
       });
-      btnWrap.appendChild(b);
+      scWrap.appendChild(b);
     });
 
-    const heatBtn = dock.querySelector("#demoHeatBtn");
-    const modeBtn = dock.querySelector("#demoModeBtn");
-
-    function syncBtns(){
-      heatBtn.textContent = `Heating: ${Demo.heatEnabled ? "ON" : "OFF"}`;
+    const heatBtn=dock.querySelector("#dHeat");
+    const modeBtn=dock.querySelector("#dMode");
+    function sync(){
+      heatBtn.textContent=`Heating: ${Demo.heatEnabled?"ON":"OFF"}`;
       heatBtn.classList.toggle("active", Demo.heatEnabled);
-      modeBtn.textContent = `Mode: ${Demo.mode}`;
-      modeBtn.classList.toggle("active", Demo.mode === "AUTO");
+      modeBtn.textContent=`Mode: ${Demo.mode}`;
+      modeBtn.classList.toggle("active", Demo.mode==="AUTO");
     }
-    syncBtns();
+    sync();
+    heatBtn.addEventListener("click", ()=>{ Demo.heatEnabled=!Demo.heatEnabled; sync(); });
+    modeBtn.addEventListener("click", ()=>{ Demo.mode=(Demo.mode==="AUTO")?"MANUAL":"AUTO"; sync(); });
 
-    heatBtn.addEventListener("click", ()=>{
-      Demo.heatEnabled = !Demo.heatEnabled;
-      syncBtns();
-    });
-    modeBtn.addEventListener("click", ()=>{
-      Demo.mode = (Demo.mode === "AUTO") ? "MANUAL" : "AUTO";
-      syncBtns();
-    });
-
-    // minimize
-    const minBtn = dock.querySelector("#demoMinBtn");
-    const body = dock.querySelector("#demoBody");
-    let minimized = false;
-    minBtn.addEventListener("click", ()=>{
-      minimized = !minimized;
-      body.style.display = minimized ? "none" : "block";
-      minBtn.textContent = minimized ? "+" : "–";
-    });
+    const minBtn=dock.querySelector("#dMin");
+    const body=dock.querySelector("#dBody");
+    let min=false;
+    minBtn.addEventListener("click", ()=>{ min=!min; body.style.display=min?"none":"block"; minBtn.textContent=min?"+":"–"; });
   }
-
-  // Mount after DOM
-  window.addEventListener("DOMContentLoaded", ()=>{
-    try { mountDock(); } catch(e){}
-  });
-
+  window.addEventListener("DOMContentLoaded", ()=>{ try{ mountDock(); }catch(e){} });
 })();
 </script>
 
@@ -1923,15 +1637,8 @@
       splash.classList.add('fade-out');
       setTimeout(function(){ splash.style.display='none'; }, 850);
     }
-    // Hide after 6s no matter what
-    setTimeout(hideSplash, 6000);
-
-    // If any JS error happens early, still hide splash
-    window.addEventListener('error', function(){
-      setTimeout(hideSplash, 250);
-    });
-
-    // Allow tap-to-skip (handy for demos)
+    setTimeout(hideSplash, 3500);
+    window.addEventListener('error', function(){ setTimeout(hideSplash, 250); });
     window.addEventListener('DOMContentLoaded', function(){
       var splash = document.getElementById('splashScreen');
       if (splash){
@@ -7582,5 +7289,46 @@ function saveSmartPitchSettings() {
   }, 4 * 60 * 60 * 1000);
 
 </script>
+
+<script>
+/* ===== Tab safety net (demo build) =====
+   If your original showTab() fails to load (due to a JS error),
+   this guarantees tab buttons still work. */
+(function(){
+  function safeShow(tabName){
+    const panels = ["Dashboard","Forecast","Schedule","Heating","Data","Advanced"];
+    // hide all panels
+    panels.forEach(n=>{
+      const p = document.getElementById("panel"+n);
+      if (p) p.style.display = (n===tabName) ? "block" : "none";
+    });
+    // set active class on buttons
+    panels.forEach(n=>{
+      const b = document.getElementById("tab"+n);
+      if (b) b.classList.toggle("active", n===tabName);
+    });
+  }
+  // If showTab isn't defined, define it.
+  if (typeof window.showTab !== "function"){
+    window.showTab = safeShow;
+  } else {
+    // Wrap existing showTab in try/catch to prevent one error breaking all tabs
+    const orig = window.showTab;
+    window.showTab = function(tabName){
+      try { return orig(tabName); }
+      catch(e){
+        console.warn("showTab error, falling back", e);
+        return safeShow(tabName);
+      }
+    };
+  }
+  // Ensure default tab visible on load
+  window.addEventListener("DOMContentLoaded", function(){
+    // Some builds leave panels all visible; enforce a clean state
+    safeShow("Dashboard");
+  });
+})();
+</script>
+
 </body>
 </html>
