@@ -1315,119 +1315,186 @@
       pointer-events: none;
     }
   </style>
-<script>
-/* ===== On-screen error overlay (for phone debugging) ===== */
-(function(){
-  const box = document.createElement('div');
-  box.id = 'errBox';
-  box.style.cssText = 'position:fixed;left:12px;right:12px;bottom:12px;z-index:99999;display:none;padding:10px 12px;border-radius:14px;background:rgba(0,0,0,0.78);border:1px solid rgba(255,255,255,0.22);color:#fff;font:12px/1.35 system-ui,Segoe UI,Roboto;';
-  box.innerHTML = '<div style="font-weight:900;margin-bottom:6px;">Demo error</div><div id="errMsg" style="white-space:pre-wrap;opacity:.9"></div><div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end;"><button id="errHide" style="padding:6px 10px;border-radius:999px;">Hide</button></div>';
-  document.addEventListener('DOMContentLoaded', ()=>{ document.body.appendChild(box); box.querySelector('#errHide').onclick=()=>box.style.display='none'; });
-  function show(msg){
-    const el = document.getElementById('errMsg'); if (el) el.textContent = msg;
-    box.style.display='block';
-  }
-  window.addEventListener('error', (e)=>{ show(String(e.message||e.error||e)); });
-  window.addEventListener('unhandledrejection', (e)=>{ show('Promise rejection: ' + String(e.reason||e)); });
-})();
-</script>
 
 <script>
-/* ===== Splash killer (never stuck) ===== */
+/* =========================
+   SMARTPITCH STATIC DEMO LAYER
+   - Works on GitHub Pages (no backend)
+   - Keeps your original UI intact
+   - Provides fake /api/* responses so tabs/subtabs/graphs load
+   - Fixes the common GitHub Pages path issue (/Smart-Pitch/ vs /api/)
+   - Includes a tiny Chart fallback so graphs render even if Chart.js CDN is blocked
+   ========================= */
+
+/* ---- On-screen error overlay (so you can screenshot errors) ---- */
 (function(){
-  function hideSplash(){
+  const box = document.createElement('div');
+  box.id = 'spErrBox';
+  box.style.cssText = 'position:fixed;left:12px;right:12px;bottom:12px;z-index:999999;display:none;padding:10px 12px;border-radius:14px;background:rgba(0,0,0,0.82);border:1px solid rgba(255,255,255,0.22);color:#fff;font:12px/1.35 system-ui,Segoe UI,Roboto;';
+  box.innerHTML = '<div style="font-weight:950;margin-bottom:6px;">SmartPitch Demo error</div><div id="spErrMsg" style="white-space:pre-wrap;opacity:.92"></div><div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end;"><button id="spErrHide" style="padding:6px 10px;border-radius:999px;">Hide</button></div>';
+  function mount(){ if(document.body && !document.getElementById("spErrBox")){ document.body.appendChild(box); box.querySelector("#spErrHide").onclick=()=>box.style.display="none"; } }
+  document.addEventListener('DOMContentLoaded', mount);
+  function show(msg){ mount(); const el=document.getElementById("spErrMsg"); if(el) el.textContent=String(msg); box.style.display="block"; }
+  window.addEventListener('error', (e)=>show(e.message || e.error || e));
+  window.addEventListener('unhandledrejection', (e)=>show("Promise rejection: " + (e.reason || e)));
+})();
+
+/* ---- Splash killer (never stuck) ---- */
+(function(){
+  function hide(){
     const s=document.getElementById('splashScreen');
     if(!s) return;
     s.classList.add('fade-out');
     setTimeout(()=>{ s.style.display='none'; }, 650);
   }
-  setTimeout(hideSplash, 2200);
-  window.addEventListener('DOMContentLoaded', ()=>{
+  // auto-hide
+  setTimeout(hide, 1800);
+  // tap-to-enter
+  document.addEventListener('DOMContentLoaded', ()=>{
     const s=document.getElementById('splashScreen');
     if(s){
       s.style.cursor='pointer';
       s.title='Tap to enter';
-      s.addEventListener('click', hideSplash);
+      s.addEventListener('click', hide);
     }
   });
-  window.addEventListener('error', ()=> setTimeout(hideSplash, 150));
+  // hide on any runtime error
+  window.addEventListener('error', ()=>setTimeout(hide, 120));
 })();
-</script>
 
-<script>
-/* ===== Tab + subtab safety net ===== */
+/* ---- Tiny Chart fallback (renders simple line charts) ---- */
 (function(){
-  function safeShowTab(name){
-    const panels=["Dashboard","Forecast","Schedule","Heating","Data","Advanced"];
-    panels.forEach(n=>{
-      const p=document.getElementById("panel"+n);
-      if(p) p.style.display = (n===name) ? "block" : "none";
-    });
-    panels.forEach(n=>{
-      const b=document.getElementById("tab"+n);
-      if(b) b.classList.toggle("active", n===name);
-    });
+  if(window.Chart) return;
+
+  function niceRange(min,max){
+    if(!isFinite(min) || !isFinite(max) || min===max){ min=min-1; max=max+1; }
+    const pad=(max-min)*0.08;
+    return [min-pad, max+pad];
   }
-  const origTab = window.showTab;
-  window.showTab = function(name){
-    try{
-      if(typeof origTab === "function") return origTab(name);
-      return safeShowTab(name);
-    }catch(e){
-      console.warn(e);
-      return safeShowTab(name);
-    }
+
+  function drawLine(ctx, pts){
+    if(pts.length<2) return;
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i].x, pts[i].y);
+    ctx.stroke();
+  }
+
+  function Chart(canvasOrCtx, cfg){
+    const canvas = canvasOrCtx && canvasOrCtx.canvas ? canvasOrCtx.canvas : canvasOrCtx;
+    const ctx = canvas.getContext('2d');
+    this._canvas = canvas;
+    this._ctx = ctx;
+    this.config = cfg || {};
+    this.data = (cfg||{}).data || {labels:[], datasets:[]};
+    this.options = (cfg||{}).options || {};
+    this._resize();
+    this.update();
+  }
+
+  Chart.prototype._resize = function(){
+    // Honor CSS size
+    const c=this._canvas;
+    const rect = c.getBoundingClientRect();
+    const w = Math.max(300, Math.floor(rect.width || c.width || 600));
+    const h = Math.max(220, Math.floor(rect.height || c.height || 300));
+    if(c.width !== w) c.width = w;
+    if(c.height !== h) c.height = h;
   };
 
-  function safeShowDataSub(which){
-    try{
-      window.dataSub = which;
-      window.dataPage = 1;
-      const trendSmartContent=document.getElementById("trendSmartContent");
-      const learningContent=document.getElementById("learningContent");
-      const smartTablePicker=document.getElementById("smartTablePickerWrap");
-      if(trendSmartContent) trendSmartContent.style.display = (which==="trend"||which==="decisions") ? "block" : "none";
-      if(learningContent) learningContent.style.display = (which==="learning") ? "block" : "none";
-      if(smartTablePicker) smartTablePicker.style.display = (which==="decisions") ? "inline-block" : "none";
-      [["trend","subTrend"],["decisions","subDecisions"],["learning","subLearning"]].forEach(([k,id])=>{
-        const b=document.getElementById(id);
-        if(b) b.classList.toggle("active", k===which);
+  Chart.prototype.update = function(){
+    const c=this._canvas, ctx=this._ctx;
+    this._resize();
+    ctx.clearRect(0,0,c.width,c.height);
+
+    const padL=48, padR=18, padT=16, padB=34;
+    const W=c.width-padL-padR;
+    const H=c.height-padT-padB;
+
+    // background
+    ctx.fillStyle = "rgba(255,255,255,0.02)";
+    ctx.fillRect(padL,padT,W,H);
+    ctx.strokeStyle = "rgba(255,255,255,0.08)";
+    ctx.strokeRect(padL,padT,W,H);
+
+    const labels=this.data.labels||[];
+    const ds=this.data.datasets||[];
+    const N = labels.length || 1;
+
+    // Compute a single y-range from all datasets that look numeric (ignore booleans)
+    let ymin=Infinity, ymax=-Infinity;
+    ds.forEach(d=>{
+      if(d.hidden) return;
+      (d.data||[]).forEach(v=>{
+        if(typeof v === "number" && isFinite(v)){ ymin=Math.min(ymin,v); ymax=Math.max(ymax,v); }
       });
-      if(typeof window.renderDataTable === "function") window.renderDataTable();
-      if(typeof window.renderSmartPitchTable === "function") window.renderSmartPitchTable();
-    }catch(e){ console.warn(e); }
-  }
-  const origSub = window.showDataSub;
-  window.showDataSub = function(which){
-    try{
-      if(typeof origSub === "function") return origSub(which);
-      return safeShowDataSub(which);
-    }catch(e){
-      console.warn(e);
-      return safeShowDataSub(which);
+    });
+    if(!isFinite(ymin)){ ymin=0; ymax=1; }
+    [ymin,ymax]=niceRange(ymin,ymax);
+
+    function xAt(i){ return padL + (N<=1?0:(i*(W/(N-1)))); }
+    function yAt(v){ return padT + (H - ((v-ymin)/(ymax-ymin))*H); }
+
+    // y ticks
+    ctx.fillStyle="rgba(234,240,255,0.65)";
+    ctx.font="12px system-ui,Segoe UI,Roboto";
+    const ticks=5;
+    for(let t=0;t<=ticks;t++){
+      const v = ymin + (t*(ymax-ymin)/ticks);
+      const y = yAt(v);
+      ctx.strokeStyle="rgba(255,255,255,0.06)";
+      ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(padL+W,y); ctx.stroke();
+      ctx.fillText(v.toFixed(1), 10, y+4);
     }
+
+    // x ticks (sparse)
+    const step = Math.max(1, Math.floor(N/6));
+    for(let i=0;i<N;i+=step){
+      const x=xAt(i);
+      ctx.strokeStyle="rgba(255,255,255,0.06)";
+      ctx.beginPath(); ctx.moveTo(x,padT); ctx.lineTo(x,padT+H); ctx.stroke();
+      const txt = String(labels[i]||"");
+      ctx.save();
+      ctx.translate(x, padT+H+18);
+      ctx.rotate(-0.3);
+      ctx.fillStyle="rgba(234,240,255,0.55)";
+      ctx.fillText(txt, -20, 0);
+      ctx.restore();
+    }
+
+    // datasets
+    ds.forEach((d, idx)=>{
+      if(d.hidden) return;
+      const col = d.borderColor || ["#7aa7ff","#ff6b6b","#2ee59d","#ffd166"][idx%4];
+      ctx.strokeStyle = col;
+      ctx.lineWidth = d.borderWidth || 2;
+      const pts=[];
+      (d.data||[]).forEach((v,i)=>{
+        if(typeof v !== "number" || !isFinite(v)) return;
+        pts.push({x:xAt(i), y:yAt(v)});
+      });
+      drawLine(ctx, pts);
+    });
   };
 
-  window.addEventListener("DOMContentLoaded", ()=>{
-    safeShowTab("Dashboard");
-    safeShowDataSub("trend");
-  });
+  Chart.prototype.destroy = function(){ /* no-op */ };
+
+  window.Chart = Chart;
 })();
 </script>
 
 <script>
-/* ===== Static DEMO API adapter: fake data so graphs/tables populate ===== */
+/* ---- API adapter (fake backend) ---- */
 (function(){
-  const DEMO_MODE = true;
-  if(!DEMO_MODE) return;
-
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
   const lerp=(a,b,t)=>a+(b-a)*t;
   const rnd=(a,b)=>a+Math.random()*(b-a);
   const nowISO=()=>new Date().toISOString();
 
   const State={ t0:Date.now(), heat:true, mode:"AUTO", scenario:"frost", energy:0 };
-  const Sc={ frost:{ base:-1.2, wind:1.2, cloud:20, hum:92 }, windy:{ base:1.5, wind:9.0, cloud:65, hum:86 }, mild:{ base:6.0, wind:3.2, cloud:90, hum:80 } };
+  const Sc={ frost:{ base:-1.2, wind:1.2, cloud:20, hum:92 },
+             windy:{ base:1.5, wind:9.0, cloud:65, hum:86 },
+             mild:{  base:6.0, wind:3.2, cloud:90, hum:80 } };
 
   function tMin(){ return (Date.now()-State.t0)/60000; }
   function s(){ return Sc[State.scenario]||Sc.frost; }
@@ -1446,22 +1513,40 @@
 
     return {
       server_time: new Date().toISOString().replace("T"," ").replace("Z","+00"),
-      latest_trend:{ ts: nowISO(), leaf_frost: (out<1.0 && cloud<40 && hum>85 && !State.heat) ? (Math.random()<0.65) : false,
-        outside_temp_c:+out.toFixed(2), humidity_pct:+hum.toFixed(0), wind_speed:+wind.toFixed(1), cloud_cover_pct:+cloud.toFixed(0),
-        avg_field_8cm_c:+(out+7.2).toFixed(2), avg_field_25cm_c:+(out+8.4).toFixed(2),
-        sec_flow_c:+secFlow.toFixed(2), sec_return_c:+secRet.toFixed(2), pri_flow_c:+(secFlow+3.2).toFixed(2), pri_return_c:+(secFlow-0.8).toFixed(2),
-        heat_enabled: State.heat, mode: State.mode, energy_kw: State.heat ? +clamp(1100+wind*70,700,1800).toFixed(0) : 0
+      latest_trend:{
+        ts: nowISO(),
+        leaf_frost: (out<1.0 && cloud<40 && hum>85 && !State.heat) ? (Math.random()<0.65) : false,
+        outside_temp_c:+out.toFixed(2),
+        humidity_pct:+hum.toFixed(0),
+        wind_speed:+wind.toFixed(1),
+        cloud_cover_pct:+cloud.toFixed(0),
+        avg_field_8cm_c:+(out+7.2).toFixed(2),
+        avg_field_25cm_c:+(out+8.4).toFixed(2),
+        sec_flow_c:+secFlow.toFixed(2),
+        sec_return_c:+secRet.toFixed(2),
+        pri_flow_c:+(secFlow+3.2).toFixed(2),
+        pri_return_c:+(secFlow-0.8).toFixed(2),
+        heat_enabled: State.heat,
+        mode: State.mode,
+        energy_kw: State.heat ? +clamp(1100+wind*70,700,1800).toFixed(0) : 0
       },
       counts:{ trend_log:81241, weather_open_meteo:168, decisions:317, weather_last_fetch:nowISO() },
       latest_decision:{ id:317, ts:nowISO(), pitch_id:"P1", mode:State.mode, frost_risk:(out<1.5 && cloud<45), confidence:+clamp(0.55+(cloud<40?0.1:-0.05),0.2,0.9).toFixed(2), reason:(out<1.5 && cloud<45)?"Clear skies + low temp ⇒ leaf frost risk":"Risk low under current conditions" },
-      forecast_avg:+(out+1.8).toFixed(1), wish_temp:w, forecast_settings:{ duration:72, temp_type:"real" },
-      smartpitch_submode:"DEMO", slope_intervened:false, slope_adjustment_total:0, session_active:true, building_protect_active:false, forecast_override_active:false
+      forecast_avg:+(out+1.8).toFixed(1),
+      wish_temp:w,
+      forecast_settings:{ duration:72, temp_type:"real" },
+      smartpitch_submode:"DEMO",
+      slope_intervened:false,
+      slope_adjustment_total:0,
+      session_active:true,
+      building_protect_active:false,
+      forecast_override_active:false
     };
   }
 
   function timeseries(hours){
     hours = clamp(parseInt(hours||24,10)||24,1,8760);
-    const points = Math.min(480, Math.max(24, Math.floor((hours*60)/10)));
+    const points = Math.min(360, Math.max(48, Math.floor((hours*60)/10)));
     const series=[]; const now=Date.now();
     for(let i=points-1;i>=0;i--){
       const ts=new Date(now-i*10*60*1000).toISOString();
@@ -1487,6 +1572,15 @@
     return { hours, series };
   }
 
+  function learningBands(){
+    return {
+      temp_bands:["T<=-6","T-6..-4","T-4..-2","T-2..0","T0..2","T>2"],
+      wind_bands:["W0..2","W2..5","W5..8","W>8"],
+      cloud_bands:["C0..10","C10..30","C30..60","C60..85","C>85"],
+      humidity_bands:["H<60","H60..80","H>80"]
+    };
+  }
+
   function learningSessions(days){
     days=clamp(parseInt(days||365,10)||365,1,3650);
     const rows=[]; const now=Date.now();
@@ -1499,46 +1593,144 @@
     return { days, rows };
   }
 
+  function dataTrendlogs(q){
+    const page = clamp(parseInt(q.page||"1",10)||1,1,9999);
+    const page_size = clamp(parseInt(q.page_size||"50",10)||50,10,500);
+    const total = 81241;
+    const rows=[];
+    const base = Date.now() - 24*3600*1000;
+    for(let i=0;i<page_size;i++){
+      const idx = (page-1)*page_size + i;
+      const ts = new Date(base + idx*60*1000).toISOString();
+      rows.push({
+        id: idx+1,
+        ts,
+        outside_temp_c:+(outside()+rnd(-0.4,0.4)).toFixed(2),
+        avg_field_8cm_c:+(outside()+7.2+rnd(-0.25,0.25)).toFixed(2),
+        sec_flow_c:+(wish(outside())+rnd(-0.6,0.6)).toFixed(2),
+        sec_return_c:+(wish(outside())-3.5+rnd(-0.6,0.6)).toFixed(2),
+        heat_enabled: State.heat ? "Active":"Inactive"
+      });
+    }
+    return { page, page_size, total, rows };
+  }
+
+  function dataSmartpitch(q){
+    const page = clamp(parseInt(q.page||"1",10)||1,1,9999);
+    const page_size = clamp(parseInt(q.page_size||"50",10)||50,10,500);
+    const total = 317;
+    const table = q.smart_table || "heating_sessions";
+    const rows=[];
+    for(let i=0;i<page_size;i++){
+      const id = total - ((page-1)*page_size+i);
+      if(id<=0) break;
+      if(table==="heating_sessions"){
+        rows.push({
+          session_id:id,
+          pitch_id: (id%2? "P1":"P2"),
+          start_ts:new Date(Date.now()-id*6*3600*1000).toISOString(),
+          end_ts:new Date(Date.now()-id*6*3600*1000 + 3.5*3600*1000).toISOString(),
+          playable_by_ts:new Date(Date.now()-id*6*3600*1000 + 5*3600*1000).toISOString(),
+          result:(Math.random()>0.25)?"PASS":"FAIL",
+          margin_minutes: Math.round(rnd(-120,120)),
+          energy_kwh: Math.round(rnd(800,5200))
+        });
+      }else if(table==="heat_periods"){
+        rows.push({
+          id,
+          start_ts:new Date(Date.now()-id*12*3600*1000).toISOString(),
+          end_ts:new Date(Date.now()-id*12*3600*1000 + rnd(2,8)*3600*1000).toISOString(),
+          pitch_id:(id%2? "P1":"P2"),
+          notes:"Auto-detected period"
+        });
+      }else{
+        rows.push({ id, note:"Demo row", smart_table:table });
+      }
+    }
+    return { page, page_size, total, smart_table:table, rows };
+  }
+
   function json(o){ return new Response(JSON.stringify(o), {status:200, headers:{"content-type":"application/json; charset=utf-8","cache-control":"no-store"}}); }
+
+  // Match /api/* even when GitHub Pages base path is /Smart-Pitch/
+  function normalizePath(url){
+    try{
+      const u = new URL(url, window.location.href);
+      let p = u.pathname || "";
+      // If hosted at /Smart-Pitch/, requests might go to /api/* or /Smart-Pitch/api/*
+      // Strip the repo prefix if present
+      const parts = window.location.pathname.split('/').filter(Boolean);
+      const repo = parts.length ? parts[0] : "";
+      if(repo && p.startsWith("/"+repo+"/api/")) p = p.replace("/"+repo, "");
+      return {u, path:p};
+    }catch(e){
+      return {u:null, path:String(url||"")};
+    }
+  }
 
   const _fetch = window.fetch.bind(window);
   window.fetch = function(input, init){
     const url = (typeof input==="string") ? input : (input && input.url ? input.url : "");
-    const u = new URL(url, window.location.href);
-    const p = u.pathname;
+    const {u, path} = normalizePath(url);
     const method = (init && init.method) ? String(init.method).toUpperCase() : "GET";
-    if(!p.startsWith("/api/")) return _fetch(input, init);
+
+    // Only intercept API calls
+    if(!(path.startsWith("/api/") || path.startsWith("api/"))) return _fetch(input, init);
+
+    // Parse query params
+    const q = {};
+    if(u) for (const [k,v] of u.searchParams.entries()) q[k]=v;
 
     if(method==="GET"){
-      if(p==="/api/ping") return json({ok:true,ts:nowISO(),demo:true});
-      if(p==="/api/status") return json(status());
-      if(p==="/api/timeseries") return json(timeseries(u.searchParams.get("hours")));
-      if(p==="/api/forecast") return json(forecast(u.searchParams.get("hours")));
-      if(p==="/api/learning/sessions") return json(learningSessions(u.searchParams.get("days")));
-      if(p==="/api/learning/recommendation") return json({ next_training:null, matches:{n:0}, recommendation:{ confidence:0.6, reason:"Demo mode" }});
-      if(p==="/api/mode") return json({mode:State.mode, heat_enabled:State.heat});
-      if(p==="/api/cost") return json({session_energy_kwh:+State.energy.toFixed(1), est_cost_gbp:+(State.energy*0.075).toFixed(2)});
-      if(p==="/api/rate") return json({gas_p_per_kwh:7.5,electricity_p_per_kwh:28.0});
-      if(p==="/api/schedule") return json({month:u.searchParams.get("month")||"", items:[]});
-      if(p.startsWith("/api/settings")) return json({ok:true});
+      if(path==="/api/ping") return json({ok:true,ts:nowISO(),demo:true});
+      if(path==="/api/status") return json(status());
+      if(path.startsWith("/api/timeseries")) return json(timeseries(q.hours));
+      if(path.startsWith("/api/forecast")) return json(forecast(q.hours || 168));
+      if(path==="/api/cost") return json({session_energy_kwh:+State.energy.toFixed(1), est_cost_gbp:+(State.energy*0.075).toFixed(2)});
+      if(path==="/api/rate") return json({gas_p_per_kwh:7.5,electricity_p_per_kwh:28.0});
+      if(path.startsWith("/api/schedule")) return json({month:q.month||"", items:[]});
+      if(path==="/api/learning/bands") return json(learningBands());
+      if(path.startsWith("/api/learning/sessions")) return json(learningSessions(q.days||365));
+      if(path==="/api/learning/recommendation") return json({ next_training:null, matches:{n:0}, recommendation:{ confidence:0.62, reason:"Demo mode (static site)" }});
+
+      // Data tab
+      if(path.startsWith("/api/data/trendlogs")) return json(dataTrendlogs(q));
+      if(path.startsWith("/api/data/smartpitch")) return json(dataSmartpitch(q));
+
+      // Heating / Advanced endpoints (return plausible structures so UI doesn't error)
+      if(path==="/api/mode") return json({mode:State.mode, heat_enabled:State.heat, scenario:State.scenario});
+      if(path==="/api/frost/status") return json({leaf_frost_detected: status().latest_trend.leaf_frost, confidence:0.64, updated_ts:nowISO()});
+      if(path==="/api/frost/settings") return json({enabled:true, sensitivity:"normal", camera_enabled:false});
+      if(path==="/api/heatcurve") return json({x1:-10,y1:30,x2:5,y2:15});
+      if(path==="/api/pid/params") return json({kp:1.2, ki:0.08, kd:0.02});
+      if(path==="/api/manual/state") return json({enabled:false});
+      if(path==="/api/manual/ao") return json({channels:[]});
+      if(path==="/api/manual/do") return json({channels:[]});
+      if(path==="/api/settings") return json({ok:true});
+      if(path.startsWith("/api/settings/")) return json({ok:true});
+      if(path==="/api/settings/alarms") return json({email_enabled:false, recipients:[]});
+      if(path==="/api/gui") return json({ok:true});
+      return json({ok:true});
     }
+
     if(method==="POST"){
-      if(p==="/api/mode"){
+      if(path==="/api/mode"){
         try{
           const body = init && init.body ? JSON.parse(init.body) : {};
           if(typeof body.mode==="string") State.mode = body.mode.toUpperCase();
           if(typeof body.heat_enabled==="boolean") State.heat = body.heat_enabled;
           if(typeof body.scenario==="string") State.scenario = body.scenario;
         }catch(e){}
-        return json({mode:State.mode, heat_enabled:State.heat});
+        return json({mode:State.mode, heat_enabled:State.heat, scenario:State.scenario});
       }
       return json({ok:true});
     }
+
     return json({ok:true});
   };
 
-  // Small demo dock for scenarios (helps in meetings)
-  window.addEventListener('DOMContentLoaded', ()=>{
+  // Friendly demo dock (doesn't break your layout)
+  document.addEventListener('DOMContentLoaded', ()=>{
     const dock=document.createElement('div');
     dock.style.cssText='position:fixed;right:12px;bottom:12px;z-index:99990;max-width:320px;padding:10px;border-radius:18px;background:rgba(0,0,0,0.30);border:1px solid rgba(255,255,255,0.18);backdrop-filter:blur(10px);box-shadow:0 18px 40px rgba(0,0,0,0.38);';
     dock.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;"><div style="font-weight:950;">DEMO · Simulation</div><button id="dMin" style="padding:6px 10px;border-radius:999px;">–</button></div><div id="dBody"><div style="font-size:12px;font-weight:900;opacity:.8;margin-bottom:6px;">Scenario</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;"><button id="scF">Frost</button><button id="scW">Windy</button><button id="scM">Mild</button></div><div style="display:flex;gap:8px;"><button id="togHeat" style="flex:1;min-width:120px;">Heating: ON</button><button id="togMode" style="flex:1;min-width:120px;">Mode: AUTO</button></div></div>';
@@ -1560,13 +1752,14 @@
   });
 })();
 </script>
+
 </head>
 
 <body>
 
 <!-- Splash Screen -->
 <div class="splash-screen" id="splashScreen">
-  <img src="./logoforhtml.svg" alt="SmartPitch" class="splash-logo">
+  <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MjAiIGhlaWdodD0iMTYwIiB2aWV3Qm94PSIwIDAgNTIwIDE2MCI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB4Mj0iMSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzJlZTU5ZCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzdhYTdmZiIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDxmaWx0ZXIgaWQ9Imdsb3ciIHg9Ii0zMCUiIHk9Ii0zMCUiIHdpZHRoPSIxNjAlIiBoZWlnaHQ9IjE2MCUiPgogICAgICA8ZmVHYXVzc2lhbkJsdXIgc3RkRGV2aWF0aW9uPSIzIiByZXN1bHQ9ImIiLz4KICAgICAgPGZlTWVyZ2U+PGZlTWVyZ2VOb2RlIGluPSJiIi8+PGZlTWVyZ2VOb2RlIGluPSJTb3VyY2VHcmFwaGljIi8+PC9mZU1lcmdlPgogICAgPC9maWx0ZXI+CiAgPC9kZWZzPgogIDxyZWN0IHg9IjE0IiB5PSIxOCIgcng9IjI4IiByeT0iMjgiIHdpZHRoPSI0OTIiIGhlaWdodD0iMTI0IiBmaWxsPSJyZ2JhKDAsMCwwLDAuMjIpIiBzdHJva2U9InJnYmEoMjU1LDI1NSwyNTUsMC4yMikiLz4KICA8dGV4dCB4PSIyNjAiIHk9IjkyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0ic3lzdGVtLXVpLFNlZ29lIFVJLFJvYm90byIgZm9udC1zaXplPSI0OCIgZm9udC13ZWlnaHQ9IjkwMCIgZmlsbD0idXJsKCNnKSIgZmlsdGVyPSJ1cmwoI2dsb3cpIj5TbWFydFBpdGNoPC90ZXh0PgogIDx0ZXh0IHg9IjI2MCIgeT0iMTI0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0ic3lzdGVtLXVpLFNlZ29lIFVJLFJvYm90byIgZm9udC1zaXplPSIxMyIgZm9udC13ZWlnaHQ9IjgwMCIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjU4KSI+REVNTzwvdGV4dD4KPC9zdmc+" alt="SmartPitch" class="splash-logo">
   <div class="splash-text">Pitch Heating Intelligence</div>
   <div class="splash-loader">
     <div class="splash-dot"></div>
@@ -1580,7 +1773,7 @@
     <div class="topbar">
       <div></div>
       <div class="brand">
-        <img src="/logoforhtml.png?v=20260122-7" alt="SmartPitch" />
+        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MjAiIGhlaWdodD0iMTYwIiB2aWV3Qm94PSIwIDAgNTIwIDE2MCI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB4Mj0iMSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzJlZTU5ZCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzdhYTdmZiIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDxmaWx0ZXIgaWQ9Imdsb3ciIHg9Ii0zMCUiIHk9Ii0zMCUiIHdpZHRoPSIxNjAlIiBoZWlnaHQ9IjE2MCUiPgogICAgICA8ZmVHYXVzc2lhbkJsdXIgc3RkRGV2aWF0aW9uPSIzIiByZXN1bHQ9ImIiLz4KICAgICAgPGZlTWVyZ2U+PGZlTWVyZ2VOb2RlIGluPSJiIi8+PGZlTWVyZ2VOb2RlIGluPSJTb3VyY2VHcmFwaGljIi8+PC9mZU1lcmdlPgogICAgPC9maWx0ZXI+CiAgPC9kZWZzPgogIDxyZWN0IHg9IjE0IiB5PSIxOCIgcng9IjI4IiByeT0iMjgiIHdpZHRoPSI0OTIiIGhlaWdodD0iMTI0IiBmaWxsPSJyZ2JhKDAsMCwwLDAuMjIpIiBzdHJva2U9InJnYmEoMjU1LDI1NSwyNTUsMC4yMikiLz4KICA8dGV4dCB4PSIyNjAiIHk9IjkyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0ic3lzdGVtLXVpLFNlZ29lIFVJLFJvYm90byIgZm9udC1zaXplPSI0OCIgZm9udC13ZWlnaHQ9IjkwMCIgZmlsbD0idXJsKCNnKSIgZmlsdGVyPSJ1cmwoI2dsb3cpIj5TbWFydFBpdGNoPC90ZXh0PgogIDx0ZXh0IHg9IjI2MCIgeT0iMTI0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0ic3lzdGVtLXVpLFNlZ29lIFVJLFJvYm90byIgZm9udC1zaXplPSIxMyIgZm9udC13ZWlnaHQ9IjgwMCIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjU4KSI+REVNTzwvdGV4dD4KPC9zdmc+" alt="SmartPitch" />
       </div>
       <div class="chip small">
         <span class="mono" id="serverTime"></span>
