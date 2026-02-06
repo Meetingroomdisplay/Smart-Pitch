@@ -1315,72 +1315,258 @@
       pointer-events: none;
     }
   </style>
+<script>
+/* ===== On-screen error overlay (for phone debugging) ===== */
+(function(){
+  const box = document.createElement('div');
+  box.id = 'errBox';
+  box.style.cssText = 'position:fixed;left:12px;right:12px;bottom:12px;z-index:99999;display:none;padding:10px 12px;border-radius:14px;background:rgba(0,0,0,0.78);border:1px solid rgba(255,255,255,0.22);color:#fff;font:12px/1.35 system-ui,Segoe UI,Roboto;';
+  box.innerHTML = '<div style="font-weight:900;margin-bottom:6px;">Demo error</div><div id="errMsg" style="white-space:pre-wrap;opacity:.9"></div><div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end;"><button id="errHide" style="padding:6px 10px;border-radius:999px;">Hide</button></div>';
+  document.addEventListener('DOMContentLoaded', ()=>{ document.body.appendChild(box); box.querySelector('#errHide').onclick=()=>box.style.display='none'; });
+  function show(msg){
+    const el = document.getElementById('errMsg'); if (el) el.textContent = msg;
+    box.style.display='block';
+  }
+  window.addEventListener('error', (e)=>{ show(String(e.message||e.error||e)); });
+  window.addEventListener('unhandledrejection', (e)=>{ show('Promise rejection: ' + String(e.reason||e)); });
+})();
+</script>
 
 <script>
-/* ===== Static demo hardening =====
-   - Prevent missing CDN libs from breaking the whole page
-   - Never get stuck on splash screen
-   - Keep original look on mobile by using desktop-width viewport
-*/
+/* ===== Splash killer (never stuck) ===== */
 (function(){
-  // Chart.js shim (very small): prevents crashes if Chart CDN is blocked
-  if (!window.Chart){
-    window.Chart = function(){
-      return { update:function(){}, destroy:function(){} };
-    };
-    window.Chart.register = function(){};
+  function hideSplash(){
+    const s=document.getElementById('splashScreen');
+    if(!s) return;
+    s.classList.add('fade-out');
+    setTimeout(()=>{ s.style.display='none'; }, 650);
   }
-  // XLSX shim: prevents crashes if XLSX CDN is blocked
-  if (!window.XLSX){
-    window.XLSX = { utils:{}, writeFile:function(){ alert("Export disabled in demo (XLSX library not loaded)."); } };
-  }
-
-  // CDN fallbacks (if jsDelivr blocked)
-  function add(src){
-    var s=document.createElement('script');
-    s.src=src; s.defer=false; s.async=false;
-    document.head.appendChild(s);
-  }
-  window.addEventListener('load', function(){
-    if (window.Chart && window.Chart.name === "Chart" && !window.Chart.defaults){
-      // likely shim still active; try load real Chart.js
-      add('https://unpkg.com/chart.js@4.4.1/dist/chart.umd.min.js');
-    }
-    if (!window.XLSX || !window.XLSX.version){
-      add('https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js');
+  setTimeout(hideSplash, 2200);
+  window.addEventListener('DOMContentLoaded', ()=>{
+    const s=document.getElementById('splashScreen');
+    if(s){
+      s.style.cursor='pointer';
+      s.title='Tap to enter';
+      s.addEventListener('click', hideSplash);
     }
   });
+  window.addEventListener('error', ()=> setTimeout(hideSplash, 150));
+})();
+</script>
 
-  // Splash killer (always hides)
-  function hideSplash(){
-    var splash = document.getElementById('splashScreen');
-    if (!splash) return;
-    splash.classList.add('fade-out');
-    setTimeout(function(){ splash.style.display='none'; }, 650);
+<script>
+/* ===== Tab + subtab safety net ===== */
+(function(){
+  function safeShowTab(name){
+    const panels=["Dashboard","Forecast","Schedule","Heating","Data","Advanced"];
+    panels.forEach(n=>{
+      const p=document.getElementById("panel"+n);
+      if(p) p.style.display = (n===name) ? "block" : "none";
+    });
+    panels.forEach(n=>{
+      const b=document.getElementById("tab"+n);
+      if(b) b.classList.toggle("active", n===name);
+    });
   }
-  // Hide after 2.5s regardless
-  setTimeout(hideSplash, 2500);
-  // Hide on any error
-  window.addEventListener('error', function(){ setTimeout(hideSplash, 100); });
-  // Allow tap to enter immediately
-  window.addEventListener('DOMContentLoaded', function(){
-    var splash = document.getElementById('splashScreen');
-    if (splash){
-      splash.style.cursor='pointer';
-      splash.title='Tap to enter';
-      splash.addEventListener('click', hideSplash);
+  const origTab = window.showTab;
+  window.showTab = function(name){
+    try{
+      if(typeof origTab === "function") return origTab(name);
+      return safeShowTab(name);
+    }catch(e){
+      console.warn(e);
+      return safeShowTab(name);
     }
+  };
+
+  function safeShowDataSub(which){
+    try{
+      window.dataSub = which;
+      window.dataPage = 1;
+      const trendSmartContent=document.getElementById("trendSmartContent");
+      const learningContent=document.getElementById("learningContent");
+      const smartTablePicker=document.getElementById("smartTablePickerWrap");
+      if(trendSmartContent) trendSmartContent.style.display = (which==="trend"||which==="decisions") ? "block" : "none";
+      if(learningContent) learningContent.style.display = (which==="learning") ? "block" : "none";
+      if(smartTablePicker) smartTablePicker.style.display = (which==="decisions") ? "inline-block" : "none";
+      [["trend","subTrend"],["decisions","subDecisions"],["learning","subLearning"]].forEach(([k,id])=>{
+        const b=document.getElementById(id);
+        if(b) b.classList.toggle("active", k===which);
+      });
+      if(typeof window.renderDataTable === "function") window.renderDataTable();
+      if(typeof window.renderSmartPitchTable === "function") window.renderSmartPitchTable();
+    }catch(e){ console.warn(e); }
+  }
+  const origSub = window.showDataSub;
+  window.showDataSub = function(which){
+    try{
+      if(typeof origSub === "function") return origSub(which);
+      return safeShowDataSub(which);
+    }catch(e){
+      console.warn(e);
+      return safeShowDataSub(which);
+    }
+  };
+
+  window.addEventListener("DOMContentLoaded", ()=>{
+    safeShowTab("Dashboard");
+    safeShowDataSub("trend");
   });
 })();
 </script>
 
+<script>
+/* ===== Static DEMO API adapter: fake data so graphs/tables populate ===== */
+(function(){
+  const DEMO_MODE = true;
+  if(!DEMO_MODE) return;
+
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+  const lerp=(a,b,t)=>a+(b-a)*t;
+  const rnd=(a,b)=>a+Math.random()*(b-a);
+  const nowISO=()=>new Date().toISOString();
+
+  const State={ t0:Date.now(), heat:true, mode:"AUTO", scenario:"frost", energy:0 };
+  const Sc={ frost:{ base:-1.2, wind:1.2, cloud:20, hum:92 }, windy:{ base:1.5, wind:9.0, cloud:65, hum:86 }, mild:{ base:6.0, wind:3.2, cloud:90, hum:80 } };
+
+  function tMin(){ return (Date.now()-State.t0)/60000; }
+  function s(){ return Sc[State.scenario]||Sc.frost; }
+  function outside(){ const x=s(); const t=tMin(); return x.base + Math.sin((t/60)*Math.PI*2)*0.7 + Math.sin(t*0.35)*0.15; }
+  function wish(out){ return +(lerp(34,16,clamp((out+10)/16,0,1))).toFixed(1); }
+
+  function status(){
+    const x=s(); const out=outside(); const w=wish(out);
+    const wind=clamp(x.wind+Math.sin(tMin()*0.25)*0.6,0,14);
+    const cloud=clamp(x.cloud+Math.sin(tMin()*0.18)*8,0,100);
+    const hum=clamp(x.hum+Math.sin(tMin()*0.14)*4,40,100);
+    State.energy += State.heat ? clamp(1100+wind*70,700,1800)/60 : 0;
+
+    const secFlow = State.heat ? clamp(w+rnd(-0.6,0.6),15,40) : clamp(out+6+rnd(-0.4,0.4),8,18);
+    const secRet  = State.heat ? secFlow-clamp(3.0+wind*0.18+rnd(-0.4,0.4),2.0,10.0) : secFlow-rnd(0.3,1.2);
+
+    return {
+      server_time: new Date().toISOString().replace("T"," ").replace("Z","+00"),
+      latest_trend:{ ts: nowISO(), leaf_frost: (out<1.0 && cloud<40 && hum>85 && !State.heat) ? (Math.random()<0.65) : false,
+        outside_temp_c:+out.toFixed(2), humidity_pct:+hum.toFixed(0), wind_speed:+wind.toFixed(1), cloud_cover_pct:+cloud.toFixed(0),
+        avg_field_8cm_c:+(out+7.2).toFixed(2), avg_field_25cm_c:+(out+8.4).toFixed(2),
+        sec_flow_c:+secFlow.toFixed(2), sec_return_c:+secRet.toFixed(2), pri_flow_c:+(secFlow+3.2).toFixed(2), pri_return_c:+(secFlow-0.8).toFixed(2),
+        heat_enabled: State.heat, mode: State.mode, energy_kw: State.heat ? +clamp(1100+wind*70,700,1800).toFixed(0) : 0
+      },
+      counts:{ trend_log:81241, weather_open_meteo:168, decisions:317, weather_last_fetch:nowISO() },
+      latest_decision:{ id:317, ts:nowISO(), pitch_id:"P1", mode:State.mode, frost_risk:(out<1.5 && cloud<45), confidence:+clamp(0.55+(cloud<40?0.1:-0.05),0.2,0.9).toFixed(2), reason:(out<1.5 && cloud<45)?"Clear skies + low temp ⇒ leaf frost risk":"Risk low under current conditions" },
+      forecast_avg:+(out+1.8).toFixed(1), wish_temp:w, forecast_settings:{ duration:72, temp_type:"real" },
+      smartpitch_submode:"DEMO", slope_intervened:false, slope_adjustment_total:0, session_active:true, building_protect_active:false, forecast_override_active:false
+    };
+  }
+
+  function timeseries(hours){
+    hours = clamp(parseInt(hours||24,10)||24,1,8760);
+    const points = Math.min(480, Math.max(24, Math.floor((hours*60)/10)));
+    const series=[]; const now=Date.now();
+    for(let i=points-1;i>=0;i--){
+      const ts=new Date(now-i*10*60*1000).toISOString();
+      const out=(s().base + Math.sin(((tMin()-i*10)/60)*Math.PI*2)*0.7);
+      series.push({ ts, outside_temp_c:+out.toFixed(2), avg_field_8cm_c:+(out+7.2).toFixed(2), heat_enabled:State.heat, mode:State.mode });
+    }
+    return { hours, series };
+  }
+
+  function forecast(hours){
+    hours = clamp(parseInt(hours||168,10)||168,1,336);
+    const series=[]; const start=Date.now();
+    for(let h=0; h<=hours; h++){
+      const ts=new Date(start+h*3600*1000).toISOString();
+      const di=Math.sin((h/24)*Math.PI*2)*0.9;
+      const temp=s().base+1.2+di;
+      const wind=clamp(s().wind+Math.sin(h*0.22)*0.8,0,14);
+      const cloud=clamp(s().cloud+Math.sin(h*0.17)*10,0,100);
+      const hum=clamp(s().hum+Math.sin(h*0.15)*6,40,100);
+      const precip=(cloud>80 && hum>85)?+clamp(0.2+Math.random()*0.4,0,2.5).toFixed(2):0;
+      series.push({ ts, temp_c:+temp.toFixed(1), humidity_pct:+hum.toFixed(0), wind_speed:+wind.toFixed(1), cloud_cover_pct:+cloud.toFixed(0), precip_mm:precip, feels_like_c:+(temp-clamp(wind*0.12,0,2.5)).toFixed(1) });
+    }
+    return { hours, series };
+  }
+
+  function learningSessions(days){
+    days=clamp(parseInt(days||365,10)||365,1,3650);
+    const rows=[]; const now=Date.now();
+    for(let i=0;i<30;i++){
+      const st=new Date(now-(i*3+1)*24*3600*1000-rnd(0,8)*3600*1000);
+      const dur=rnd(2.5,6.5); const en=new Date(st.getTime()+dur*3600*1000); const pb=new Date(en.getTime()+rnd(0.5,2.0)*3600*1000);
+      const pass=Math.random()>0.3;
+      rows.push({ session_id:200-i, pitch_id:(i%2===0)?"P1":"P2", start_ts:st.toISOString(), end_ts:en.toISOString(), playable_by_ts:pb.toISOString(), result:pass?"PASS":"FAIL", margin_minutes: pass?Math.round(rnd(10,120)):-Math.round(rnd(10,240)), energy_kwh:+rnd(1200,5400).toFixed(0), notes: pass?"Cleared in time":"Late clearance" });
+    }
+    return { days, rows };
+  }
+
+  function json(o){ return new Response(JSON.stringify(o), {status:200, headers:{"content-type":"application/json; charset=utf-8","cache-control":"no-store"}}); }
+
+  const _fetch = window.fetch.bind(window);
+  window.fetch = function(input, init){
+    const url = (typeof input==="string") ? input : (input && input.url ? input.url : "");
+    const u = new URL(url, window.location.href);
+    const p = u.pathname;
+    const method = (init && init.method) ? String(init.method).toUpperCase() : "GET";
+    if(!p.startsWith("/api/")) return _fetch(input, init);
+
+    if(method==="GET"){
+      if(p==="/api/ping") return json({ok:true,ts:nowISO(),demo:true});
+      if(p==="/api/status") return json(status());
+      if(p==="/api/timeseries") return json(timeseries(u.searchParams.get("hours")));
+      if(p==="/api/forecast") return json(forecast(u.searchParams.get("hours")));
+      if(p==="/api/learning/sessions") return json(learningSessions(u.searchParams.get("days")));
+      if(p==="/api/learning/recommendation") return json({ next_training:null, matches:{n:0}, recommendation:{ confidence:0.6, reason:"Demo mode" }});
+      if(p==="/api/mode") return json({mode:State.mode, heat_enabled:State.heat});
+      if(p==="/api/cost") return json({session_energy_kwh:+State.energy.toFixed(1), est_cost_gbp:+(State.energy*0.075).toFixed(2)});
+      if(p==="/api/rate") return json({gas_p_per_kwh:7.5,electricity_p_per_kwh:28.0});
+      if(p==="/api/schedule") return json({month:u.searchParams.get("month")||"", items:[]});
+      if(p.startsWith("/api/settings")) return json({ok:true});
+    }
+    if(method==="POST"){
+      if(p==="/api/mode"){
+        try{
+          const body = init && init.body ? JSON.parse(init.body) : {};
+          if(typeof body.mode==="string") State.mode = body.mode.toUpperCase();
+          if(typeof body.heat_enabled==="boolean") State.heat = body.heat_enabled;
+          if(typeof body.scenario==="string") State.scenario = body.scenario;
+        }catch(e){}
+        return json({mode:State.mode, heat_enabled:State.heat});
+      }
+      return json({ok:true});
+    }
+    return json({ok:true});
+  };
+
+  // Small demo dock for scenarios (helps in meetings)
+  window.addEventListener('DOMContentLoaded', ()=>{
+    const dock=document.createElement('div');
+    dock.style.cssText='position:fixed;right:12px;bottom:12px;z-index:99990;max-width:320px;padding:10px;border-radius:18px;background:rgba(0,0,0,0.30);border:1px solid rgba(255,255,255,0.18);backdrop-filter:blur(10px);box-shadow:0 18px 40px rgba(0,0,0,0.38);';
+    dock.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;"><div style="font-weight:950;">DEMO · Simulation</div><button id="dMin" style="padding:6px 10px;border-radius:999px;">–</button></div><div id="dBody"><div style="font-size:12px;font-weight:900;opacity:.8;margin-bottom:6px;">Scenario</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;"><button id="scF">Frost</button><button id="scW">Windy</button><button id="scM">Mild</button></div><div style="display:flex;gap:8px;"><button id="togHeat" style="flex:1;min-width:120px;">Heating: ON</button><button id="togMode" style="flex:1;min-width:120px;">Mode: AUTO</button></div></div>';
+    document.body.appendChild(dock);
+    const setA=()=>{
+      dock.querySelector('#togHeat').textContent='Heating: '+(State.heat?'ON':'OFF');
+      dock.querySelector('#togMode').textContent='Mode: '+State.mode;
+      dock.querySelector('#scF').classList.toggle('active', State.scenario==='frost');
+      dock.querySelector('#scW').classList.toggle('active', State.scenario==='windy');
+      dock.querySelector('#scM').classList.toggle('active', State.scenario==='mild');
+    };
+    dock.querySelector('#scF').onclick=()=>{State.scenario='frost'; setA();};
+    dock.querySelector('#scW').onclick=()=>{State.scenario='windy'; setA();};
+    dock.querySelector('#scM').onclick=()=>{State.scenario='mild'; setA();};
+    dock.querySelector('#togHeat').onclick=()=>{State.heat=!State.heat; setA();};
+    dock.querySelector('#togMode').onclick=()=>{State.mode=(State.mode==='AUTO')?'MANUAL':'AUTO'; setA();};
+    let min=false; dock.querySelector('#dMin').onclick=()=>{min=!min; dock.querySelector('#dBody').style.display=min?'none':'block'; dock.querySelector('#dMin').textContent=min?'+':'–';};
+    setA();
+  });
+})();
+</script>
 </head>
 
 <body>
 
 <!-- Splash Screen -->
 <div class="splash-screen" id="splashScreen">
-  <img src="./logoforhtml.png" onerror="this.onerror=null;this.src='./logoforhtml.svg';" alt="SmartPitch" class="splash-logo">
+  <img src="./logoforhtml.svg" alt="SmartPitch" class="splash-logo">
   <div class="splash-text">Pitch Heating Intelligence</div>
   <div class="splash-loader">
     <div class="splash-dot"></div>
@@ -1397,7 +1583,7 @@
         <img src="/logoforhtml.png?v=20260122-7" alt="SmartPitch" />
       </div>
       <div class="chip small">
-        <span class="mono" id="serverTime">—</span>
+        <span class="mono" id="serverTime"></span>
       </div>
     </div>
 
@@ -1413,7 +1599,7 @@
     <!-- DASHBOARD -->
     <div class="panel" id="panelDashboard">
       <div id="forecastOverrideIndicator" style="display:none; background:rgba(255,159,67,0.15); border:1px solid rgba(255,159,67,0.4); border-radius:8px; padding:8px 12px; margin-bottom:10px; align-items:center; gap:8px;">
-        <span style="color:#ff9f43; font-size:18px;">⚠️</span>
+        <span style="color:#ff9f43; font-size:18px;">??</span>
         <span style="color:#ff9f43; font-size:12px; font-weight:600;">FORECAST OVERRIDE ACTIVE</span>
         <span style="color:var(--muted); font-size:11px;">Actual temp significantly colder than forecast - using actual readings</span>
       </div>
@@ -1422,8 +1608,8 @@
           <h3>Live status</h3>
           <div class="kpi">
             <div class="label">Leaf condition</div>
-            <div class="value" id="leafFrost">—</div>
-            <div class="small mono" id="trendTs">—</div>
+            <div class="value" id="leafFrost"></div>
+            <div class="small mono" id="trendTs"></div>
           </div>
         </div>
 
@@ -1431,7 +1617,7 @@
           <h3>Field Temperature</h3>
           <div class="kpi">
             <div class="label">Average field temp -8cm</div>
-            <div class="value"><span class="mono" id="field8" style="color:#2ee59d;">—</span></div>
+            <div class="value"><span class="mono" id="field8" style="color:#2ee59d;"></span></div>
           </div>
         </div>
 
@@ -1441,7 +1627,7 @@
             <div style="display:flex; gap:15px; align-items:stretch;">
               <div class="kpi" style="flex:1; margin:0; text-align:center;">
                 <div class="label">Heating</div>
-                <div class="value" style="justify-content:center;"><span class="mono" id="liveKw" style="color:#2ee59d;">—</span></div>
+                <div class="value" style="justify-content:center;"><span class="mono" id="liveKw" style="color:#2ee59d;"></span></div>
               </div>
               <div style="display:flex; flex-direction:column; justify-content:center; padding:8px 12px; background:rgba(0,0,0,0.2); border-radius:8px; border:1px solid #3a4a5a;">
                 <label style="color:#9fb0d7; font-size:10px; margin-bottom:4px;">Flow Rate</label>
@@ -1458,7 +1644,7 @@
             <h3 style="text-align:center; width:100%;">Heat Status</h3>
             <div style="flex:1; display:flex; align-items:center; justify-content:center;">
               <div id="heatStatusIndicator" style="display:flex; align-items:center; gap:10px; padding:12px 18px; border-radius:25px; background:linear-gradient(145deg, #1a1a1a, #252525); border:1px solid #333; box-shadow:0 4px 15px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05); transition: all 0.4s ease;">
-                <div id="heatStatusIcon" style="font-size:20px; filter:grayscale(1) opacity(0.4); transition: all 0.4s ease;">🔥</div>
+                <div id="heatStatusIcon" style="font-size:20px; filter:grayscale(1) opacity(0.4); transition: all 0.4s ease;">?</div>
                 <div id="heatStatusText" style="font-size:13px; font-weight:700; letter-spacing:1px; color:#555; text-transform:uppercase; transition: all 0.4s ease;">OFF</div>
               </div>
             </div>
@@ -1469,8 +1655,8 @@
           <h3>Mode</h3>
           <div class="kpi">
             <div class="label">Current mode</div>
-            <div class="value"><span class="led on" id="modeLed"></span><span class="mono" id="modeNow">—</span></div>
-            <div class="small" id="modeDesc">—</div>
+            <div class="value"><span class="led on" id="modeLed"></span><span class="mono" id="modeNow"></span></div>
+            <div class="small" id="modeDesc"></div>
           </div>
         </div>
       </div>
@@ -1503,22 +1689,22 @@
             <div class="kpis">
               <div class="kpi">
                 <div class="label">Playable by</div>
-                <div class="value" id="playableBy">—</div>
-                <div class="small mono" id="trainingStart">—</div>
+                <div class="value" id="playableBy"></div>
+                <div class="small mono" id="trainingStart"></div>
               </div>
               <div class="kpi">
                 <div class="label">Suggested start</div>
-                <div class="value" id="suggestedStart">—</div>
-                <div class="small mono" id="startOffset">—</div>
+                <div class="value" id="suggestedStart"></div>
+                <div class="small mono" id="startOffset"></div>
               </div>
               <div class="kpi">
                 <div class="label">Confidence</div>
-                <div class="value" id="confidence">—</div>
-                <div class="small mono" id="passRate">—</div>
+                <div class="value" id="confidence"></div>
+                <div class="small mono" id="passRate"></div>
               </div>
             </div>
             <div class="small" style="margin-top:10px;">
-              Reason: <span id="reason">—</span>
+              Reason: <span id="reason"></span>
             </div>
           </div>
 
@@ -1527,8 +1713,8 @@
 
             <div class="kpi" style="margin-bottom:10px;">
               <div class="label">Season-to-date</div>
-              <div class="value" id="seasonCost">—</div>
-              <div class="small">kWh: <span class="mono" id="seasonKwh">—</span></div>
+              <div class="value" id="seasonCost"></div>
+              <div class="small">kWh: <span class="mono" id="seasonKwh"></span></div>
             </div>
 
             <div class="kpi">
@@ -1536,10 +1722,10 @@
               <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px;">
                 <input id="rateInput" type="number" step="0.01" min="0" style="width:160px;" />
                 <button onclick="saveRate()">Save</button>
-                <div class="small">Current: <span class="mono" id="rateNow">—</span></div>
+                <div class="small">Current: <span class="mono" id="rateNow"></span></div>
               </div>
               <div class="small" style="margin-top:8px;">
-                Season window: <span class="mono" id="seasonWindow">—</span>
+                Season window: <span class="mono" id="seasonWindow"></span>
               </div>
             </div>
           </div>
@@ -1554,13 +1740,13 @@
         <div class="row">
           <div>
             <h3 style="margin:0 0 6px;">Forecast (Fixed 7 days)</h3>
-            <div class="small">Temp (green) • Feels Like (green dashed) • Cloud (yellow) • Wind (blue)</div>
+            <div class="small">Temp (green)  Feels Like (green dashed)  Cloud (yellow)  Wind (blue)</div>
           </div>
           <div class="row" style="gap:10px; align-items:center;">
             <div style="background: rgba(46,229,157,0.15); border: 2px solid var(--accent); border-radius: 12px; padding: 8px 16px; text-align:center;">
               <div class="small" style="color: var(--accent); font-weight:900;" id="coldestLabel">Coldest Feels Like</div>
-              <div style="font-size: 24px; font-weight: 990; color: #fff;" id="coldestValue">—</div>
-              <div class="small mono" id="coldestTime">—</div>
+              <div style="font-size: 24px; font-weight: 990; color: #fff;" id="coldestValue"></div>
+              <div class="small mono" id="coldestTime"></div>
             </div>
             <button id="btnShowTemp" onclick="selectTempType('temp')">Temp</button>
             <button id="btnShowFeels" class="active" onclick="selectTempType('feels')">Feels Like</button>
@@ -1572,12 +1758,12 @@
           <canvas id="forecastChart"></canvas>
         </div>
 
-        <div class="warnBox" id="forecastWarn">—</div>
-        <div class="errorBox" id="forecastErr">—</div>
+        <div class="warnBox" id="forecastWarn"></div>
+        <div class="errorBox" id="forecastErr"></div>
 
         <div class="small" style="margin-top:10px;">
-          Rows: <span class="mono" id="fcRows">—</span> • DB max_ts: <span class="mono" id="fcMaxTs">—</span>
-          • Behind: <span class="mono" id="fcBehind">—</span>
+          Rows: <span class="mono" id="fcRows"></span>  DB max_ts: <span class="mono" id="fcMaxTs"></span>
+           Behind: <span class="mono" id="fcBehind"></span>
         </div>
       </div>
     </div>
@@ -1588,11 +1774,11 @@
         <div class="calTop">
           <div class="calHeader">
             <div class="monthNav">
-              <button onclick="prevMonth()" title="Previous month">−</button>
+              <button onclick="prevMonth()" title="Previous month">?</button>
               <button onclick="nextMonth()" title="Next month">+</button>
             </div>
             <div>
-              <div class="monthTitle" id="calTitle">—</div>
+              <div class="monthTitle" id="calTitle"></div>
               <div class="small">Click a day to add entry. It shows inside the day cell. X deletes. Save writes to DB.</div>
             </div>
           </div>
@@ -1636,7 +1822,7 @@
 
         <div class="calGrid" id="calGrid"></div>
 
-        <div class="errorBox" id="scheduleErr">—</div>
+        <div class="errorBox" id="scheduleErr"></div>
 
         <div class="small" style="margin-top:10px;">
           Stored fields: <span class="mono">training_start</span> (Start), <span class="mono">buffer_minutes</span> (Buffer),
@@ -1669,20 +1855,20 @@
             </div>
             <div class="mode-buttons">
               <button id="btnSTANDARD" class="mode-btn" onclick="setModeEnhanced('STANDARD')">
-                <div class="mode-btn-icon">🔧</div>
+                <div class="mode-btn-icon">?</div>
                 <div class="mode-btn-label">Standard</div>
                 <div class="mode-btn-desc">Manual control</div>
                 <span class="led" id="ledSTANDARD"></span>
               </button>
               
               <button id="btnSMARTPITCH" class="mode-btn smartpitch" onclick="setModeEnhanced('SMARTPITCH')">
-                <div class="mode-btn-icon">🤖</div>
+                <div class="mode-btn-icon">?</div>
                 <div class="mode-btn-label">SmartPitch AI</div>
                 <div class="mode-btn-desc">Intelligent automation</div>
                 <span class="led" id="ledSMARTPITCH"></span>
               </button>
             </div>
-            <div class="mode-status">Current mode: <span class="mono" id="modeNow2">—</span></div>
+            <div class="mode-status">Current mode: <span class="mono" id="modeNow2"></span></div>
             <div id="aiStatusPanel" class="ai-status-panel">
               <div class="ai-status-header"><div class="ai-pulse"></div><span>AI ENGINE ACTIVE</span></div>
               <div class="ai-submode-display">
@@ -1722,33 +1908,33 @@
             
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
               <div class="kpi">
-                <div class="label">X1 (Coldest Outside °C)</div>
+                <div class="label">X1 (Coldest Outside C)</div>
                 <input type="number" id="hcX1" step="0.5" value="-10" style="width:100%; margin-top:6px;" onchange="updateHeatCurvePreview()" />
               </div>
               <div class="kpi">
-                <div class="label">Y1 (Flow at X1 °C)</div>
+                <div class="label">Y1 (Flow at X1 C)</div>
                 <input type="number" id="hcY1" step="0.5" value="35" style="width:100%; margin-top:6px;" onchange="updateHeatCurvePreview()" />
               </div>
             </div>
 
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
               <div class="kpi" style="border-color: rgba(255,209,102,0.35); background: rgba(255,209,102,0.08);">
-                <div class="label" style="color: var(--warn);">XK (Knee Outside °C)</div>
+                <div class="label" style="color: var(--warn);">XK (Knee Outside C)</div>
                 <input type="number" id="hcXK" step="0.5" value="-2" style="width:100%; margin-top:6px;" onchange="updateHeatCurvePreview()" />
               </div>
               <div class="kpi" style="border-color: rgba(255,209,102,0.35); background: rgba(255,209,102,0.08);">
-                <div class="label" style="color: var(--warn);">YK (Flow at Knee °C)</div>
+                <div class="label" style="color: var(--warn);">YK (Flow at Knee C)</div>
                 <input type="number" id="hcYK" step="0.5" value="20" style="width:100%; margin-top:6px;" onchange="updateHeatCurvePreview()" />
               </div>
             </div>
 
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
               <div class="kpi">
-                <div class="label">X2 (Warmest Outside °C)</div>
+                <div class="label">X2 (Warmest Outside C)</div>
                 <input type="number" id="hcX2" step="0.5" value="4" style="width:100%; margin-top:6px;" onchange="updateHeatCurvePreview()" />
               </div>
               <div class="kpi">
-                <div class="label">Y2 (Flow at X2 °C)</div>
+                <div class="label">Y2 (Flow at X2 C)</div>
                 <input type="number" id="hcY2" step="0.5" value="15" style="width:100%; margin-top:6px;" onchange="updateHeatCurvePreview()" />
               </div>
             </div>
@@ -1759,13 +1945,13 @@
             </div>
 
             <div class="small" style="margin-top:4px;">
-              Current wish temp: <span class="mono" id="hcCurrentFlow">—</span>
+              Current wish temp: <span class="mono" id="hcCurrentFlow"></span>
             </div>
           </div>
           </div>
         </div>
 
-        <div class="errorBox" id="heatCurveErr">—</div>
+        <div class="errorBox" id="heatCurveErr"></div>
 
       <!-- FORECAST MONITOR CONTROL -->
       <div class="card" style="margin-top:20px;">
@@ -1977,33 +2163,33 @@
             
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
               <div class="kpi">
-                <div class="label">X1 (Coldest Outside °C)</div>
+                <div class="label">X1 (Coldest Outside C)</div>
                 <input type="number" id="hcX1" step="0.5" value="-10" style="width:100%; margin-top:6px;" onchange="updateHeatCurvePreview()" />
               </div>
               <div class="kpi">
-                <div class="label">Y1 (Flow at X1 °C)</div>
+                <div class="label">Y1 (Flow at X1 C)</div>
                 <input type="number" id="hcY1" step="0.5" value="35" style="width:100%; margin-top:6px;" onchange="updateHeatCurvePreview()" />
               </div>
             </div>
 
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
               <div class="kpi" style="border-color: rgba(255,209,102,0.35); background: rgba(255,209,102,0.08);">
-                <div class="label" style="color: var(--warn);">XK (Knee Outside °C)</div>
+                <div class="label" style="color: var(--warn);">XK (Knee Outside C)</div>
                 <input type="number" id="hcXK" step="0.5" value="-2" style="width:100%; margin-top:6px;" onchange="updateHeatCurvePreview()" />
               </div>
               <div class="kpi" style="border-color: rgba(255,209,102,0.35); background: rgba(255,209,102,0.08);">
-                <div class="label" style="color: var(--warn);">YK (Flow at Knee °C)</div>
+                <div class="label" style="color: var(--warn);">YK (Flow at Knee C)</div>
                 <input type="number" id="hcYK" step="0.5" value="20" style="width:100%; margin-top:6px;" onchange="updateHeatCurvePreview()" />
               </div>
             </div>
 
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
               <div class="kpi">
-                <div class="label">X2 (Warmest Outside °C)</div>
+                <div class="label">X2 (Warmest Outside C)</div>
                 <input type="number" id="hcX2" step="0.5" value="4" style="width:100%; margin-top:6px;" onchange="updateHeatCurvePreview()" />
               </div>
               <div class="kpi">
-                <div class="label">Y2 (Flow at X2 °C)</div>
+                <div class="label">Y2 (Flow at X2 C)</div>
                 <input type="number" id="hcY2" step="0.5" value="15" style="width:100%; margin-top:6px;" onchange="updateHeatCurvePreview()" />
               </div>
             </div>
@@ -2014,13 +2200,13 @@
             </div>
 
             <div class="small" style="margin-top:4px;">
-              Current wish temp: <span class="mono" id="hcCurrentFlow">—</span>
+              Current wish temp: <span class="mono" id="hcCurrentFlow"></span>
             </div>
           </div>
           </div>
         </div>
 
-        <div class="errorBox" id="heatCurveErr">—</div>
+        <div class="errorBox" id="heatCurveErr"></div>
 
       <!-- FORECAST MONITOR CONTROL -->
       <div class="card" style="margin-top:20px;">
@@ -2095,7 +2281,7 @@
           
           <!-- Weather (Top Right) -->
           <div class="sch-weather">
-            <div class="sch-weather-temp" id="schWeatherTemp">--°C</div>
+            <div class="sch-weather-temp" id="schWeatherTemp">--C</div>
             <div class="sch-weather-label">Outside</div>
           </div>
           
@@ -2105,20 +2291,20 @@
             <!-- Plant Room (Left) -->
             <div class="sch-plant">
               <div class="sch-plant-box">
-                <div class="sch-plant-icon">⬛</div>
+                <div class="sch-plant-icon">?</div>
                 <div class="sch-plant-label">Heat Source</div>
-                <div class="sch-temp-badge sch-plant-temp" id="schPlantTemp">M --°C</div>
+                <div class="sch-temp-badge sch-plant-temp" id="schPlantTemp">M --C</div>
               </div>
               
               <!-- Valves and Pipes from Plant -->
               <div class="sch-plant-pipes">
                 <div class="sch-valve-group">
                   <div class="sch-valve" id="schValve1"><div class="sch-valve-icon"></div></div>
-                  <div class="sch-temp-badge" id="schFlowTemp">M --°C</div>
+                  <div class="sch-temp-badge" id="schFlowTemp">M --C</div>
                 </div>
                 <div class="sch-valve-group">
                   <div class="sch-valve" id="schValve2"><div class="sch-valve-icon"></div></div>
-                  <div class="sch-temp-badge" id="schReturnTemp">M --°C</div>
+                  <div class="sch-temp-badge" id="schReturnTemp">M --C</div>
                 </div>
               </div>
               
@@ -2148,8 +2334,8 @@
               </svg>
               
               <!-- Manifold Temps on pipes -->
-              <div class="sch-pipe-temp" style="left:120px;top:30px;" id="schPipeTemp1">M --°C</div>
-              <div class="sch-pipe-temp" style="right:120px;top:30px;" id="schPipeTemp2">M --°C</div>
+              <div class="sch-pipe-temp" style="left:120px;top:30px;" id="schPipeTemp1">M --C</div>
+              <div class="sch-pipe-temp" style="right:120px;top:30px;" id="schPipeTemp2">M --C</div>
             </div>
             
             <!-- Pitches -->
@@ -2160,7 +2346,7 @@
                 <div class="sch-pitch-status" id="schPitch1Status">Selected</div>
                 <div class="sch-pitch-header">
                   <div class="sch-pump" id="schPump1"><div class="sch-pump-icon"></div></div>
-                  <div class="sch-temp-badge" id="schP1FlowIn">M --°C</div>
+                  <div class="sch-temp-badge" id="schP1FlowIn">M --C</div>
                 </div>
                 <div class="sch-pitch-field">
                   <div class="sch-field-grass">
@@ -2168,14 +2354,14 @@
                     <div class="sch-field-center"></div>
                   </div>
                   <!-- Pitch 1 Sensors -->
-                  <div class="sch-sensor sch-sensor-tl" id="schP1SensorTL"><span class="sch-sensor-led"></span>--°C</div>
-                  <div class="sch-sensor sch-sensor-tr" id="schP1SensorTR"><span class="sch-sensor-led"></span>--°C</div>
-                  <div class="sch-sensor sch-sensor-c" id="schP1SensorC"><span class="sch-sensor-led"></span>--°C</div>
-                  <div class="sch-sensor sch-sensor-bl" id="schP1SensorBL"><span class="sch-sensor-led"></span>--°C</div>
-                  <div class="sch-sensor sch-sensor-br" id="schP1SensorBR"><span class="sch-sensor-led"></span>--°C</div>
+                  <div class="sch-sensor sch-sensor-tl" id="schP1SensorTL"><span class="sch-sensor-led"></span>--C</div>
+                  <div class="sch-sensor sch-sensor-tr" id="schP1SensorTR"><span class="sch-sensor-led"></span>--C</div>
+                  <div class="sch-sensor sch-sensor-c" id="schP1SensorC"><span class="sch-sensor-led"></span>--C</div>
+                  <div class="sch-sensor sch-sensor-bl" id="schP1SensorBL"><span class="sch-sensor-led"></span>--C</div>
+                  <div class="sch-sensor sch-sensor-br" id="schP1SensorBR"><span class="sch-sensor-led"></span>--C</div>
                 </div>
                 <div class="sch-pitch-footer">
-                  <div class="sch-temp-badge" id="schP1Return">M --°C</div>
+                  <div class="sch-temp-badge" id="schP1Return">M --C</div>
                 </div>
                 <div class="sch-pitch-label">Pitch 1</div>
               </div>
@@ -2185,7 +2371,7 @@
                 <div class="sch-pitch-status" id="schPitch2Status">Selected</div>
                 <div class="sch-pitch-header">
                   <div class="sch-pump" id="schPump2"><div class="sch-pump-icon"></div></div>
-                  <div class="sch-temp-badge" id="schP2FlowIn">M --°C</div>
+                  <div class="sch-temp-badge" id="schP2FlowIn">M --C</div>
                 </div>
                 <div class="sch-pitch-field">
                   <div class="sch-field-grass">
@@ -2193,14 +2379,14 @@
                     <div class="sch-field-center"></div>
                   </div>
                   <!-- Pitch 2 Sensors -->
-                  <div class="sch-sensor sch-sensor-tl" id="schP2SensorTL"><span class="sch-sensor-led"></span>--°C</div>
-                  <div class="sch-sensor sch-sensor-tr" id="schP2SensorTR"><span class="sch-sensor-led"></span>--°C</div>
-                  <div class="sch-sensor sch-sensor-c" id="schP2SensorC"><span class="sch-sensor-led"></span>--°C</div>
-                  <div class="sch-sensor sch-sensor-bl" id="schP2SensorBL"><span class="sch-sensor-led"></span>--°C</div>
-                  <div class="sch-sensor sch-sensor-br" id="schP2SensorBR"><span class="sch-sensor-led"></span>--°C</div>
+                  <div class="sch-sensor sch-sensor-tl" id="schP2SensorTL"><span class="sch-sensor-led"></span>--C</div>
+                  <div class="sch-sensor sch-sensor-tr" id="schP2SensorTR"><span class="sch-sensor-led"></span>--C</div>
+                  <div class="sch-sensor sch-sensor-c" id="schP2SensorC"><span class="sch-sensor-led"></span>--C</div>
+                  <div class="sch-sensor sch-sensor-bl" id="schP2SensorBL"><span class="sch-sensor-led"></span>--C</div>
+                  <div class="sch-sensor sch-sensor-br" id="schP2SensorBR"><span class="sch-sensor-led"></span>--C</div>
                 </div>
                 <div class="sch-pitch-footer">
-                  <div class="sch-temp-badge" id="schP2Return">M --°C</div>
+                  <div class="sch-temp-badge" id="schP2Return">M --C</div>
                 </div>
                 <div class="sch-pitch-label">Pitch 2</div>
               </div>
@@ -2283,7 +2469,7 @@
                 
                 <div class="settings-row" style="background:#1a1f2a; border-radius:6px; padding:12px; margin-top:8px;">
                   <div style="font-size:12px; color:#8a9bae;">
-                    <strong style="color:#64b4ff;">How it works:</strong> Heating will start when the average <span id="stdTempTypeDesc">actual</span> temperature over the next <span id="stdDaysDesc">3</span> days falls below the Frost Threshold (<span id="stdThresholdDesc">0</span>°C).
+                    <strong style="color:#64b4ff;">How it works:</strong> Heating will start when the average <span id="stdTempTypeDesc">actual</span> temperature over the next <span id="stdDaysDesc">3</span> days falls below the Frost Threshold (<span id="stdThresholdDesc">0</span>C).
                   </div>
                 </div>
               </div>
@@ -2304,7 +2490,7 @@
                 </div>
                 <div class="settings-input">
                   <input type="number" id="frostThreshold" value="2" min="-10" max="10" step="0.5" onchange="saveFrostSettings()">
-                  <span class="settings-input-unit">°C</span>
+                  <span class="settings-input-unit">C</span>
                 </div>
               </div>
               
@@ -2315,7 +2501,7 @@
                 </div>
                 <div class="settings-input">
                   <input type="number" id="frostDeadband" value="1.5" min="0.5" max="5" step="0.5" onchange="saveFrostSettings()">
-                  <span class="settings-input-unit">°C</span>
+                  <span class="settings-input-unit">C</span>
                 </div>
               </div>
               
@@ -2337,7 +2523,7 @@
                 </div>
                 <div class="settings-input">
                   <input type="number" id="soilFrozenThreshold" value="0" min="-5" max="5" step="0.5" onchange="saveFrostSettings()">
-                  <span class="settings-input-unit">°C</span>
+                  <span class="settings-input-unit">C</span>
                 </div>
               </div>
               
@@ -2376,7 +2562,7 @@
                 </div>
                 <div class="settings-input">
                   <input type="number" id="forecastOverrideThreshold" value="5" min="2" max="10" step="1" onchange="saveFrostSettings()">
-                  <span class="settings-input-unit">°C</span>
+                  <span class="settings-input-unit">C</span>
                 </div>
               </div>
             </div>
@@ -2404,10 +2590,10 @@
                 <div style="background:rgba(255,159,67,0.1); border:1px solid rgba(255,159,67,0.3); border-radius:8px; padding:12px; margin-bottom:16px;">
                   <div style="color:#ff9f43; font-weight:600; font-size:12px; margin-bottom:8px;">WHEN SAFETY NET INTERVENES:</div>
                   <ul style="margin:0; padding-left:20px; font-size:12px; color:var(--muted); line-height:1.6;">
-                    <li><strong>EMERGENCY</strong> — Pitch drops below emergency threshold</li>
-                    <li><strong>OFF-TRACK</strong> — Pitch falling too fast with deadline approaching</li>
-                    <li><strong>STALLED</strong> — No progress being made near deadline</li>
-                    <li><strong>SUCCESS</strong> — Can reduce heat once frost risk cleared (if safe)</li>
+                    <li><strong>EMERGENCY</strong>  Pitch drops below emergency threshold</li>
+                    <li><strong>OFF-TRACK</strong>  Pitch falling too fast with deadline approaching</li>
+                    <li><strong>STALLED</strong>  No progress being made near deadline</li>
+                    <li><strong>SUCCESS</strong>  Can reduce heat once frost risk cleared (if safe)</li>
                   </ul>
                 </div>
               
@@ -2431,18 +2617,18 @@
                 </div>
                 <div class="settings-input">
                   <input type="number" id="emergencyThreshold" value="1.0" min="0" max="3.0" step="0.5" onchange="saveSmartPitchSettings()">
-                  <span class="settings-input-unit">°C</span>
+                  <span class="settings-input-unit">C</span>
                 </div>
               </div>
               
               <div class="settings-row">
                 <div class="settings-label">
                   <span class="settings-label-text">Off-Track Slope</span>
-                  <span class="settings-label-hint">Falling rate (°C/hr) that triggers off-track intervention</span>
+                  <span class="settings-label-hint">Falling rate (C/hr) that triggers off-track intervention</span>
                 </div>
                 <div class="settings-input">
                   <input type="number" id="offTrackSlope" value="-0.5" min="-2.0" max="0" step="0.1" onchange="saveSmartPitchSettings()">
-                  <span class="settings-input-unit">°C/hr</span>
+                  <span class="settings-input-unit">C/hr</span>
                 </div>
               </div>
               
@@ -2511,7 +2697,7 @@
                   </div>
                   <div class="settings-input">
                     <input type="number" id="successTemp" value="5.0" min="3.0" max="10.0" step="0.5" onchange="saveSmartPitchSettings()">
-                    <span class="settings-input-unit">°C</span>
+                    <span class="settings-input-unit">C</span>
                   </div>
                 </div>
                 
@@ -2693,12 +2879,12 @@
             <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:16px;">
               <div>
                 <div class="small" style="color:var(--muted); margin-bottom:6px;">Temperature Bands</div>
-                <div class="mono small">T&lt;=-6: ≤ -6°C (Severe frost)</div>
-                <div class="mono small">T-6..-4: -6 to -4°C (Hard frost)</div>
-                <div class="mono small">T-4..-2: -4 to -2°C (Moderate frost)</div>
-                <div class="mono small">T-2..0: -2 to 0°C (Light frost)</div>
-                <div class="mono small">T0..2: 0 to 2°C (Frost risk)</div>
-                <div class="mono small">T&gt;2: &gt; 2°C (Low risk)</div>
+                <div class="mono small">T&lt;=-6: ? -6C (Severe frost)</div>
+                <div class="mono small">T-6..-4: -6 to -4C (Hard frost)</div>
+                <div class="mono small">T-4..-2: -4 to -2C (Moderate frost)</div>
+                <div class="mono small">T-2..0: -2 to 0C (Light frost)</div>
+                <div class="mono small">T0..2: 0 to 2C (Frost risk)</div>
+                <div class="mono small">T&gt;2: &gt; 2C (Low risk)</div>
               </div>
               <div>
                 <div class="small" style="color:var(--muted); margin-bottom:6px;">Cloud Cover Bands</div>
@@ -2706,20 +2892,20 @@
                 <div class="mono small">C10..30: 10-30% (Mostly clear)</div>
                 <div class="mono small">C30..60: 30-60% (Partial cloud)</div>
                 <div class="mono small">C60..85: 60-85% (Mostly cloudy)</div>
-                <div class="mono small">C&gt;85: ≥ 85% (Overcast - no solar)</div>
+                <div class="mono small">C&gt;85: ? 85% (Overcast - no solar)</div>
               </div>
               <div>
                 <div class="small" style="color:var(--muted); margin-bottom:6px;">Humidity Bands</div>
                 <div class="mono small">H&lt;60: &lt; 60% (Dry)</div>
                 <div class="mono small">H60..80: 60-80% (Moderate)</div>
-                <div class="mono small">H&gt;80: ≥ 80% (High - frost risk)</div>
+                <div class="mono small">H&gt;80: ? 80% (High - frost risk)</div>
               </div>
               <div>
                 <div class="small" style="color:var(--muted); margin-bottom:6px;">Wind Bands</div>
                 <div class="mono small">W0..2: &lt; 2 m/s (Calm)</div>
                 <div class="mono small">W2..5: 2-5 m/s (Light)</div>
                 <div class="mono small">W5..8: 5-8 m/s (Moderate)</div>
-                <div class="mono small">W&gt;8: ≥ 8 m/s (Strong)</div>
+                <div class="mono small">W&gt;8: ? 8 m/s (Strong)</div>
               </div>
             </div>
           </div>
@@ -2727,10 +2913,10 @@
           <div class="card" style="margin-bottom:16px;">
             <h4 style="margin:0 0 12px 0;">Current Conditions</h4>
             <div style="display:flex; gap:20px; flex-wrap:wrap;">
-              <div><span class="small" style="color:var(--muted);">Temp:</span> <span id="currentTempBand" class="mono">—</span></div>
-              <div><span class="small" style="color:var(--muted);">Cloud:</span> <span id="currentCloudBand" class="mono">—</span></div>
-              <div><span class="small" style="color:var(--muted);">Humidity:</span> <span id="currentHumidityBand" class="mono">—</span></div>
-              <div><span class="small" style="color:var(--muted);">Wind:</span> <span id="currentWindBand" class="mono">—</span></div>
+              <div><span class="small" style="color:var(--muted);">Temp:</span> <span id="currentTempBand" class="mono"></span></div>
+              <div><span class="small" style="color:var(--muted);">Cloud:</span> <span id="currentCloudBand" class="mono"></span></div>
+              <div><span class="small" style="color:var(--muted);">Humidity:</span> <span id="currentHumidityBand" class="mono"></span></div>
+              <div><span class="small" style="color:var(--muted);">Wind:</span> <span id="currentWindBand" class="mono"></span></div>
             </div>
           </div>
           
@@ -2743,7 +2929,7 @@
                 <tbody id="learningTbody"></tbody>
               </table>
             </div>
-            <div id="learningMeta" class="small" style="margin-top:8px; color:var(--muted);">—</div>
+            <div id="learningMeta" class="small" style="margin-top:8px; color:var(--muted);"></div>
           </div>
         </div>
 
@@ -2786,10 +2972,10 @@
           </div>
 
           <div class="row" style="margin-top:10px;">
-            <div class="small"><span class="mono" id="dataMeta">—</span></div>
+            <div class="small"><span class="mono" id="dataMeta"></span></div>
             <div class="row" style="gap:8px; justify-content:flex-end;">
-              <button onclick="pagePrev()">◀ Prev</button>
-              <button onclick="pageNext()">Next ▶</button>
+              <button onclick="pagePrev()">? Prev</button>
+              <button onclick="pageNext()">Next ?</button>
             </div>
           </div>
         </div>
@@ -2846,11 +3032,11 @@
                   <div style="background:#1a2530; border-radius:8px; padding:12px; border:1px solid #3a4a5a;">
                     <div style="color:#7aa7ff; font-weight:900; font-size:12px; margin-bottom:10px; text-align:center; border-bottom:1px solid #3a4a5a; padding-bottom:6px;">ANALOG INPUTS</div>
                     <div style="display:flex; flex-direction:column; gap:6px;">
-                      <div class="plc-io-row"><span class="plc-label">AI1</span><span class="plc-desc">Outside Air Temp</span><span class="plc-value" id="plcAI1">--°C</span></div>
-                      <div class="plc-io-row"><span class="plc-label">AI2</span><span class="plc-desc">Secondary Flow</span><span class="plc-value" id="plcAI2">--°C</span></div>
-                      <div class="plc-io-row"><span class="plc-label">AI3</span><span class="plc-desc">Secondary Return</span><span class="plc-value" id="plcAI3">--°C</span></div>
-                      <div class="plc-io-row"><span class="plc-label">AI4</span><span class="plc-desc">Primary Flow</span><span class="plc-value" id="plcAI4">--°C</span></div>
-                      <div class="plc-io-row"><span class="plc-label">AI5</span><span class="plc-desc">Primary Return</span><span class="plc-value" id="plcAI5">--°C</span></div>
+                      <div class="plc-io-row"><span class="plc-label">AI1</span><span class="plc-desc">Outside Air Temp</span><span class="plc-value" id="plcAI1">--C</span></div>
+                      <div class="plc-io-row"><span class="plc-label">AI2</span><span class="plc-desc">Secondary Flow</span><span class="plc-value" id="plcAI2">--C</span></div>
+                      <div class="plc-io-row"><span class="plc-label">AI3</span><span class="plc-desc">Secondary Return</span><span class="plc-value" id="plcAI3">--C</span></div>
+                      <div class="plc-io-row"><span class="plc-label">AI4</span><span class="plc-desc">Primary Flow</span><span class="plc-value" id="plcAI4">--C</span></div>
+                      <div class="plc-io-row"><span class="plc-label">AI5</span><span class="plc-desc">Primary Return</span><span class="plc-value" id="plcAI5">--C</span></div>
                       <div class="plc-io-row"><span class="plc-label">AI6</span><span class="plc-desc">Spare</span><span class="plc-value" id="plcAI6">--</span></div>
                     </div>
                   </div>
@@ -2919,7 +3105,7 @@
           <div style="background:linear-gradient(135deg,#ff6b6b22,#ff8e5322); border:2px solid #ff6b6b; border-radius:10px; padding:15px; margin-bottom:20px;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
               <div>
-                <div style="color:#ff6b6b; font-weight:900; font-size:14px;">⚠️ MANUAL OVERRIDE MODE</div>
+                <div style="color:#ff6b6b; font-weight:900; font-size:14px;">?? MANUAL OVERRIDE MODE</div>
                 <div style="color:#9fb0d7; font-size:11px;">When enabled, automatic control is suspended</div>
               </div>
               <label class="toggle-switch">
@@ -3089,7 +3275,7 @@
                   <div style="background:#1a2530; border-radius:8px; padding:12px; border:1px solid #f5a623;">
                     <div style="color:#f5a623; font-weight:900; font-size:12px; margin-bottom:10px; text-align:center; border-bottom:1px solid #3a4a5a; padding-bottom:6px;">AMBIENT</div>
                     <div style="display:flex; flex-direction:column; gap:6px;">
-                      <div class="modbus-io-row"><span class="modbus-label">MB1</span><span class="modbus-desc">Air Temperature</span><span class="modbus-value" id="modbusMB1">--°C</span></div>
+                      <div class="modbus-io-row"><span class="modbus-label">MB1</span><span class="modbus-desc">Air Temperature</span><span class="modbus-value" id="modbusMB1">--C</span></div>
                     </div>
                   </div>
                 </div>
@@ -3099,11 +3285,11 @@
                   <div style="background:#1a2530; border-radius:8px; padding:12px; border:1px solid #3a4a5a;">
                     <div style="color:#7aa7ff; font-weight:900; font-size:12px; margin-bottom:10px; text-align:center; border-bottom:1px solid #3a4a5a; padding-bottom:6px;">PITCH 1 SENSORS</div>
                     <div style="display:flex; flex-direction:column; gap:6px;">
-                      <div class="modbus-io-row"><span class="modbus-label">MB2</span><span class="modbus-desc">Centre Spot</span><span class="modbus-value" id="modbusMB2">--°C</span></div>
-                      <div class="modbus-io-row"><span class="modbus-label">MB3</span><span class="modbus-desc">18yd Box - Top Left</span><span class="modbus-value" id="modbusMB3">--°C</span></div>
-                      <div class="modbus-io-row"><span class="modbus-label">MB4</span><span class="modbus-desc">18yd Box - Top Right</span><span class="modbus-value" id="modbusMB4">--°C</span></div>
-                      <div class="modbus-io-row"><span class="modbus-label">MB5</span><span class="modbus-desc">18yd Box - Bot Left</span><span class="modbus-value" id="modbusMB5">--°C</span></div>
-                      <div class="modbus-io-row"><span class="modbus-label">MB6</span><span class="modbus-desc">18yd Box - Bot Right</span><span class="modbus-value" id="modbusMB6">--°C</span></div>
+                      <div class="modbus-io-row"><span class="modbus-label">MB2</span><span class="modbus-desc">Centre Spot</span><span class="modbus-value" id="modbusMB2">--C</span></div>
+                      <div class="modbus-io-row"><span class="modbus-label">MB3</span><span class="modbus-desc">18yd Box - Top Left</span><span class="modbus-value" id="modbusMB3">--C</span></div>
+                      <div class="modbus-io-row"><span class="modbus-label">MB4</span><span class="modbus-desc">18yd Box - Top Right</span><span class="modbus-value" id="modbusMB4">--C</span></div>
+                      <div class="modbus-io-row"><span class="modbus-label">MB5</span><span class="modbus-desc">18yd Box - Bot Left</span><span class="modbus-value" id="modbusMB5">--C</span></div>
+                      <div class="modbus-io-row"><span class="modbus-label">MB6</span><span class="modbus-desc">18yd Box - Bot Right</span><span class="modbus-value" id="modbusMB6">--C</span></div>
                     </div>
                   </div>
                 </div>
@@ -3113,11 +3299,11 @@
                   <div style="background:#1a2530; border-radius:8px; padding:12px; border:1px solid #3a4a5a;">
                     <div style="color:#2ee59d; font-weight:900; font-size:12px; margin-bottom:10px; text-align:center; border-bottom:1px solid #3a4a5a; padding-bottom:6px;">PITCH 2 SENSORS</div>
                     <div style="display:flex; flex-direction:column; gap:6px;">
-                      <div class="modbus-io-row"><span class="modbus-label">MB7</span><span class="modbus-desc">Centre Spot</span><span class="modbus-value" id="modbusMB7">--°C</span></div>
-                      <div class="modbus-io-row"><span class="modbus-label">MB8</span><span class="modbus-desc">18yd Box - Top Left</span><span class="modbus-value" id="modbusMB8">--°C</span></div>
-                      <div class="modbus-io-row"><span class="modbus-label">MB9</span><span class="modbus-desc">18yd Box - Top Right</span><span class="modbus-value" id="modbusMB9">--°C</span></div>
-                      <div class="modbus-io-row"><span class="modbus-label">MB10</span><span class="modbus-desc">18yd Box - Bot Left</span><span class="modbus-value" id="modbusMB10">--°C</span></div>
-                      <div class="modbus-io-row"><span class="modbus-label">MB11</span><span class="modbus-desc">18yd Box - Bot Right</span><span class="modbus-value" id="modbusMB11">--°C</span></div>
+                      <div class="modbus-io-row"><span class="modbus-label">MB7</span><span class="modbus-desc">Centre Spot</span><span class="modbus-value" id="modbusMB7">--C</span></div>
+                      <div class="modbus-io-row"><span class="modbus-label">MB8</span><span class="modbus-desc">18yd Box - Top Left</span><span class="modbus-value" id="modbusMB8">--C</span></div>
+                      <div class="modbus-io-row"><span class="modbus-label">MB9</span><span class="modbus-desc">18yd Box - Top Right</span><span class="modbus-value" id="modbusMB9">--C</span></div>
+                      <div class="modbus-io-row"><span class="modbus-label">MB10</span><span class="modbus-desc">18yd Box - Bot Left</span><span class="modbus-value" id="modbusMB10">--C</span></div>
+                      <div class="modbus-io-row"><span class="modbus-label">MB11</span><span class="modbus-desc">18yd Box - Bot Right</span><span class="modbus-value" id="modbusMB11">--C</span></div>
                     </div>
                   </div>
                 </div>
@@ -3136,11 +3322,11 @@
                 </div>
                 <div style="background:#1a2530; border-radius:6px; padding:8px 15px; border:1px solid #3a4a5a;">
                   <span style="color:#7a8a9a; font-size:11px;">Avg Pitch 1:</span>
-                  <span style="color:#7aa7ff; font-size:12px; font-weight:bold; margin-left:5px;" id="modbusAvgP1">--°C</span>
+                  <span style="color:#7aa7ff; font-size:12px; font-weight:bold; margin-left:5px;" id="modbusAvgP1">--C</span>
                 </div>
                 <div style="background:#1a2530; border-radius:6px; padding:8px 15px; border:1px solid #3a4a5a;">
                   <span style="color:#7a8a9a; font-size:11px;">Avg Pitch 2:</span>
-                  <span style="color:#2ee59d; font-size:12px; font-weight:bold; margin-left:5px;" id="modbusAvgP2">--°C</span>
+                  <span style="color:#2ee59d; font-size:12px; font-weight:bold; margin-left:5px;" id="modbusAvgP2">--C</span>
                 </div>
               </div>
               
@@ -3296,7 +3482,7 @@
                   <input type="checkbox" id="alarmPriFlowLowEnabled">
                   <label style="flex:1; font-size:12px;">Primary Flow Low</label>
                   <input type="number" id="alarmPriFlowLowThreshold" value="15" style="width:50px; padding:4px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); border-radius:4px; color:#fff; text-align:center;">
-                  <span style="font-size:11px;">°C</span>
+                  <span style="font-size:11px;">C</span>
                   <input type="number" id="alarmPriFlowLowDelay" value="60" style="width:50px; padding:4px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); border-radius:4px; color:#fff; text-align:center;">
                   <span style="font-size:11px;">sec</span>
                 </div>
@@ -3304,7 +3490,7 @@
                   <input type="checkbox" id="alarmPriReturnHighEnabled">
                   <label style="flex:1; font-size:12px;">Primary Return High</label>
                   <input type="number" id="alarmPriReturnHighThreshold" value="45" style="width:50px; padding:4px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); border-radius:4px; color:#fff; text-align:center;">
-                  <span style="font-size:11px;">°C</span>
+                  <span style="font-size:11px;">C</span>
                   <input type="number" id="alarmPriReturnHighDelay" value="60" style="width:50px; padding:4px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); border-radius:4px; color:#fff; text-align:center;">
                   <span style="font-size:11px;">sec</span>
                 </div>
@@ -3312,7 +3498,7 @@
                   <input type="checkbox" id="alarmPitchFrozenEnabled">
                   <label style="flex:1; font-size:12px;">Pitch Frozen</label>
                   <input type="number" id="alarmPitchFrozenThreshold" value="1" style="width:50px; padding:4px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); border-radius:4px; color:#fff; text-align:center;">
-                  <span style="font-size:11px;">°C</span>
+                  <span style="font-size:11px;">C</span>
                   <input type="number" id="alarmPitchFrozenDelay" value="300" style="width:50px; padding:4px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); border-radius:4px; color:#fff; text-align:center;">
                   <span style="font-size:11px;">sec</span>
                 </div>
@@ -3320,7 +3506,7 @@
                   <input type="checkbox" id="alarmSecFlowNotReachingEnabled">
                   <label style="flex:1; font-size:12px;">Sec. Flow Not Reaching Setpoint</label>
                   <input type="number" id="alarmSecFlowNotReachingOffset" value="3" style="width:50px; padding:4px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); border-radius:4px; color:#fff; text-align:center;">
-                  <span style="font-size:11px;">°C</span>
+                  <span style="font-size:11px;">C</span>
                   <input type="number" id="alarmSecFlowNotReachingDelay" value="900" style="width:50px; padding:4px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); border-radius:4px; color:#fff; text-align:center;">
                   <span style="font-size:11px;">sec</span>
                 </div>
@@ -3356,12 +3542,12 @@
                 <div style="display:flex; align-items:center; gap:8px;">
                   <label style="width:120px; font-size:12px;">Close Below</label>
                   <input type="number" id="buildingProtectCloseBelowTemp" value="25" style="width:60px; padding:4px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); border-radius:4px; color:#fff; text-align:center;">
-                  <span style="font-size:11px;">°C</span>
+                  <span style="font-size:11px;">C</span>
                 </div>
                 <div style="display:flex; align-items:center; gap:8px;">
                   <label style="width:120px; font-size:12px;">Open Above</label>
                   <input type="number" id="buildingProtectOpenAboveTemp" value="30" style="width:60px; padding:4px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); border-radius:4px; color:#fff; text-align:center;">
-                  <span style="font-size:11px;">°C</span>
+                  <span style="font-size:11px;">C</span>
                 </div>
               </div>
             </div>
@@ -3380,7 +3566,7 @@
                 <div style="display:flex; align-items:center; gap:8px; margin-top:8px;">
                   <label style="font-size:12px;">Hysteresis</label>
                   <input type="number" id="alarmHysteresis" value="1" step="0.1" style="width:50px; padding:4px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); border-radius:4px; color:#fff; text-align:center;">
-                  <span style="font-size:11px;">°C</span>
+                  <span style="font-size:11px;">C</span>
                 </div>
               </div>
             </div>
@@ -3466,7 +3652,7 @@
       const forecastAvg = status.forecast_avg;
       const hcFlow = document.getElementById('hcCurrentFlow');
       if (hcFlow && wishTemp !== null && wishTemp !== undefined) {
-        hcFlow.textContent = wishTemp + '°C';
+        hcFlow.textContent = wishTemp + 'C';
       }
       const schWish = document.getElementById('schWishTemp');
       if (schWish && wishTemp !== null && wishTemp !== undefined) {
@@ -3560,7 +3746,7 @@
         if (sessionActive && slopeIntervened) {
           slopeRow.style.display = 'flex';
           slopeRow.className = 'slope-indicator active';
-          if (slopeText) slopeText.textContent = 'Intervened (' + slopeAdjustment.toFixed(1) + '°C)';
+          if (slopeText) slopeText.textContent = 'Intervened (' + slopeAdjustment.toFixed(1) + 'C)';
         } else if (sessionActive) {
           slopeRow.style.display = 'flex';
           slopeRow.className = 'slope-indicator on-track';
@@ -3668,8 +3854,8 @@
       }
       
       // Pitch sensors - using field temps
-      const f8 = t.avg_field_8cm_c ?? 6.0;  // Test value: 6°C at -8cm
-      const f25 = t.avg_field_25cm_c ?? 8.5;  // Test value: 8.5°C at -25cm
+      const f8 = t.avg_field_8cm_c ?? 6.0;  // Test value: 6C at -8cm
+      const f25 = t.avg_field_25cm_c ?? 8.5;  // Test value: 8.5C at -25cm
       // Corners (8 sensors at -8cm)
       setVal('schP1TL', f8);
       setVal('schP1TR', f8);
@@ -4237,7 +4423,7 @@ function showHeatingSub(sub) {
   function setText(id,v){
     const el = document.getElementById(id);
     if(!el) return;
-    el.textContent = (v===null||v===undefined||v==="") ? "—" : v;
+    el.textContent = (v===null||v===undefined||v==="") ? "" : v;
   }
   function setLed(id, on){
     const el = document.getElementById(id);
@@ -4268,7 +4454,7 @@ function showHeatingSub(sub) {
   }
 
   function fmtAxisDateTime(iso){
-    if(!iso) return "—";
+    if(!iso) return "";
     const d = new Date(iso);
     const dd = String(d.getDate()).padStart(2,'0');
     const mm = String(d.getMonth()+1).padStart(2,'0');
@@ -4277,14 +4463,14 @@ function showHeatingSub(sub) {
     return dd + "/" + mm + " " + hh + ":" + mi;
   }
   function fmtShort(iso){
-    if(!iso) return "—";
+    if(!iso) return "";
     const d = new Date(iso);
     const hh = String(d.getHours()).padStart(2,'0');
     const mi = String(d.getMinutes()).padStart(2,'0');
     return hh + ":" + mi;
   }
   function fmtDateShort(iso){
-    if(!iso) return "—";
+    if(!iso) return "";
     const d = new Date(iso);
     const dd = String(d.getDate()).padStart(2,'0');
     const mm = String(d.getMonth()+1).padStart(2,'0');
@@ -4366,8 +4552,8 @@ function showHeatingSub(sub) {
         data: {
           labels: labels,
           datasets: [
-            { label: "Outside °C", data: outside, tension: 0.25, pointRadius: 0, borderWidth: 2, borderColor: '#7aa7ff' },
-            { label: "Avg Field 8cm °C", data: field8, tension: 0.25, pointRadius: 0, borderWidth: 2, borderColor: '#ff6b6b' },
+            { label: "Outside C", data: outside, tension: 0.25, pointRadius: 0, borderWidth: 2, borderColor: '#7aa7ff' },
+            { label: "Avg Field 8cm C", data: field8, tension: 0.25, pointRadius: 0, borderWidth: 2, borderColor: '#ff6b6b' },
             { label: "Heating On", data: [], backgroundColor: 'rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.4)', borderWidth: 2, pointRadius: 0 }
           ]
         },
@@ -4403,8 +4589,8 @@ function showHeatingSub(sub) {
         data: {
           labels: labels,
           datasets: [
-            { label: "Temp °C", data: temp, tension: 0.25, pointRadius: 0, borderWidth: 3, borderColor: GREEN, yAxisID: "y", hidden: !showTemp },
-            { label: "Feels Like °C", data: feels, tension: 0.25, pointRadius: 0, borderWidth: 2, borderDash:[6,4], borderColor: GREEN, yAxisID: "y", hidden: !showFeels },
+            { label: "Temp C", data: temp, tension: 0.25, pointRadius: 0, borderWidth: 3, borderColor: GREEN, yAxisID: "y", hidden: !showTemp },
+            { label: "Feels Like C", data: feels, tension: 0.25, pointRadius: 0, borderWidth: 2, borderDash:[6,4], borderColor: GREEN, yAxisID: "y", hidden: !showFeels },
             { label: "Cloud %", data: cloud, tension: 0.25, pointRadius: 0, borderWidth: 3, borderColor: YELLOW, yAxisID: "y2" },
             { label: "Wind", data: wind, tension: 0.25, pointRadius: 0, borderWidth: 3, borderColor: BLUE, yAxisID: "y2" }
           ]
@@ -4418,7 +4604,7 @@ function showHeatingSub(sub) {
             y: { 
               position: "left", 
               ticks: { maxTicksLimit: 6 },
-              title: { display: true, text: "Temperature °C", color: "#2ee59d" },
+              title: { display: true, text: "Temperature C", color: "#2ee59d" },
               min: -15,
               max: 35
             },
@@ -4489,14 +4675,14 @@ function showHeatingSub(sub) {
     
     const data = window.forecastData;
     if (showFeels && data.coldestFeels) {
-      valueEl.textContent = data.coldestFeels.temp.toFixed(1) + "°C";
-      timeEl.textContent = data.coldestFeels.time || "—";
+      valueEl.textContent = data.coldestFeels.temp.toFixed(1) + "C";
+      timeEl.textContent = data.coldestFeels.time || "";
     } else if (showTemp && data.coldestTemp) {
-      valueEl.textContent = data.coldestTemp.temp.toFixed(1) + "°C";
-      timeEl.textContent = data.coldestTemp.time || "—";
+      valueEl.textContent = data.coldestTemp.temp.toFixed(1) + "C";
+      timeEl.textContent = data.coldestTemp.time || "";
     } else {
-      valueEl.textContent = "—";
-      timeEl.textContent = "—";
+      valueEl.textContent = "";
+      timeEl.textContent = "";
     }
   }
 
@@ -4512,15 +4698,15 @@ function showHeatingSub(sub) {
     });
 
     setLed("modeLed", !!mode || buildingProtectActive);
-    setText("modeNow", displayMode || "—");
-    setText("modeNow2", displayMode || "—");
+    setText("modeNow", displayMode || "");
+    setText("modeNow2", displayMode || "");
     updateModeVisuals(displayMode);
 
     const desc =
       buildingProtectActive ? "Actuator closed - protecting building heating system." :
       mode === "STANDARD" ? "Fixed strategy (no learning). Use for baseline stability." :
       mode === "SMARTPITCH" ? "AI-driven optimisation using learned performance bands." :
-      "—";
+      "";
     setText("modeDesc", desc);
   }
 
@@ -4570,7 +4756,7 @@ function showHeatingSub(sub) {
     }
 
     const latest = (data.status && data.status.latest_trend) ? data.status.latest_trend : {};
-    setText("trendTs", latest.ts ? fmtAxisDateTime(latest.ts) : "—");
+    setText("trendTs", latest.ts ? fmtAxisDateTime(latest.ts) : "");
 
     // Fetch frost detection status
     try {
@@ -4585,24 +4771,24 @@ function showHeatingSub(sub) {
           leafEl.textContent = "CLEAR";
           leafEl.style.color = "#2ee59d";
         } else {
-          leafEl.textContent = "—";
+          leafEl.textContent = "";
           leafEl.style.color = "";
         }
       }
     } catch(e) {
-      setText("leafFrost", "—");
+      setText("leafFrost", "");
     }
 
-    setText("outsideTemp", (latest.outside_temp_c ?? "—") + "°C");
-    setText("field8", (latest.avg_field_8cm_c ?? 6.0) + "°C");  // Test: 6°C at -8cm
-    setText("field25", (latest.avg_field_25cm_c ?? 8.5) + "°C");  // Test: 8.5°C at -25cm
-    setText("wind", (latest.wind_speed ?? "—"));
-    setText("cloud", (latest.cloud_cover_pct ?? "—"));
-    setText("humidity", (latest.humidity_pct ?? "—"));
+    setText("outsideTemp", (latest.outside_temp_c ?? "") + "C");
+    setText("field8", (latest.avg_field_8cm_c ?? 6.0) + "C");  // Test: 6C at -8cm
+    setText("field25", (latest.avg_field_25cm_c ?? 8.5) + "C");  // Test: 8.5C at -25cm
+    setText("wind", (latest.wind_speed ?? ""));
+    setText("cloud", (latest.cloud_cover_pct ?? ""));
+    setText("humidity", (latest.humidity_pct ?? ""));
 
     const heatOn = (latest.heat_enabled === true);
     setLed("heatLed", heatOn);
-    setText("heatEnabledMini", heatOn ? "ON" : (latest.heat_enabled === false ? "OFF" : "—"));
+    setText("heatEnabledMini", heatOn ? "ON" : (latest.heat_enabled === false ? "OFF" : ""));
     
     // Update large heat status LED
     const heatIndicator = document.getElementById('heatStatusIndicator');
@@ -4642,7 +4828,7 @@ function showHeatingSub(sub) {
     } else if (flowRateVal <= 0) {
       setText("liveKw", "Set flow rate");
     } else {
-      setText("liveKw", "—");
+      setText("liveKw", "");
     }
 
     const learning = data.learning || {};
@@ -4663,13 +4849,13 @@ function showHeatingSub(sub) {
       if (el1) { el1.style.fontSize = ""; el1.style.fontWeight = ""; el1.style.color = ""; }
       if (el2) { el2.style.fontSize = ""; el2.style.fontWeight = ""; el2.style.color = ""; }
       if (el3) { el3.style.fontSize = ""; el3.style.fontWeight = ""; el3.style.color = ""; }
-      setText("trainingStart", nt.training_start ? ("Training: " + fmtAxisDateTime(nt.training_start)) : "—");
-      setText("playableBy", nt.playable_by_ts ? fmtShort(nt.playable_by_ts) : "—");
-      setText("suggestedStart", rec.suggested_start_ts ? fmtShort(rec.suggested_start_ts) : "—");
-      setText("startOffset", (rec.start_offset_minutes != null) ? ("Start offset: " + rec.start_offset_minutes + " min") : "—");
-      setText("confidence", (rec.confidence != null) ? rec.confidence : "—");
-      setText("passRate", "Pass rate: " + (matches.pass_rate ?? "—") + "% (" + (matches.pass ?? "—") + "/" + (matches.n ?? "—") + ")");
-      setText("reason", rec.reason ?? "—");
+      setText("trainingStart", nt.training_start ? ("Training: " + fmtAxisDateTime(nt.training_start)) : "");
+      setText("playableBy", nt.playable_by_ts ? fmtShort(nt.playable_by_ts) : "");
+      setText("suggestedStart", rec.suggested_start_ts ? fmtShort(rec.suggested_start_ts) : "");
+      setText("startOffset", (rec.start_offset_minutes != null) ? ("Start offset: " + rec.start_offset_minutes + " min") : "");
+      setText("confidence", (rec.confidence != null) ? rec.confidence : "");
+      setText("passRate", "Pass rate: " + (matches.pass_rate ?? "") + "% (" + (matches.pass ?? "") + "/" + (matches.n ?? "") + ")");
+      setText("reason", rec.reason ?? "");
     } else {
       // No frost risk - show simple message in smaller text
       const noHeatMsg = "No upcoming heating required";
@@ -4764,12 +4950,12 @@ function showHeatingSub(sub) {
           const hasFrostRisk = forecastMin !== undefined && forecastMin !== null && forecastMin < 2;
           
           if (!hasFrostRisk) {
-            planText = 'SmartPitch is monitoring but NO heating is needed. The weather forecast shows temperatures staying above freezing (minimum ' + (forecastMin !== null && forecastMin !== undefined ? forecastMin.toFixed(1) + '°C' : 'unknown') + '). ';
+            planText = 'SmartPitch is monitoring but NO heating is needed. The weather forecast shows temperatures staying above freezing (minimum ' + (forecastMin !== null && forecastMin !== undefined ? forecastMin.toFixed(1) + 'C' : 'unknown') + '). ';
             if (nt.training_start) {
               planText += 'Your pitch will be fine for the upcoming session without heating.';
             }
           } else {
-            planText = 'SmartPitch is monitoring conditions. Frost risk detected (forecast minimum ' + forecastMin.toFixed(1) + '°C). ';
+            planText = 'SmartPitch is monitoring conditions. Frost risk detected (forecast minimum ' + forecastMin.toFixed(1) + 'C). ';
             if (nt.training_start && rec.suggested_start_ts) {
               const suggestedTime = new Date(rec.suggested_start_ts);
               const suggestedHours = (suggestedTime - new Date()) / (1000 * 60 * 60);
@@ -4914,12 +5100,12 @@ function showHeatingSub(sub) {
       const series = Array.isArray(data) ? data : (data.series || []);
 
       setText("fcRows", series.length);
-      setText("fcMaxTs", data.max_ts ? fmtAxisDateTime(data.max_ts) : "—");
-      setText("fcBehind", (data.hours_behind != null) ? (Number(data.hours_behind).toFixed(2) + " h") : "—");
+      setText("fcMaxTs", data.max_ts ? fmtAxisDateTime(data.max_ts) : "");
+      setText("fcBehind", (data.hours_behind != null) ? (Number(data.hours_behind).toFixed(2) + " h") : "");
 
       if(data.stale === true){
         showWarn("forecastWarn",
-          "⚠ Forecast DB is STALE. Your ingest has stopped or is late. " +
+          "? Forecast DB is STALE. Your ingest has stopped or is late. " +
           "DB max_ts is behind NOW, so you cannot see week-ahead until new open-meteo rows are inserted."
         );
       }
@@ -4943,7 +5129,7 @@ function showHeatingSub(sub) {
         // Fallback to estimate if DB has no data yet
         feels = series.map(p => estimateFeels(p.temp_c ?? p.temp ?? null, p.wind_speed ?? p.wind ?? null, p.humidity_pct ?? p.humidity ?? null));
         showWarn("forecastWarn",
-          (data.stale ? "⚠ Forecast DB is STALE. " : "") +
+          (data.stale ? "? Forecast DB is STALE. " : "") +
           "Feels Like is estimated (waiting for forecast data with apparent_temperature)."
         );
       }
@@ -4983,9 +5169,9 @@ function showHeatingSub(sub) {
     } catch(e){
       showErr("forecastErr", "Forecast load failed: " + (e && e.message ? e.message : String(e)));
       ensureForecastChart([], [], [], [], []);
-      setText("fcRows", "—");
-      setText("fcMaxTs", "—");
-      setText("fcBehind", "—");
+      setText("fcRows", "");
+      setText("fcMaxTs", "");
+      setText("fcBehind", "");
     }
   }
 
@@ -4997,13 +5183,13 @@ function showHeatingSub(sub) {
     const cr = data.current_rate || {};
     const season = data.season || {};
 
-    setText("seasonKwh", s.kwh ?? "—");
-    setText("seasonCost", (s.cost_gbp!=null ? ("£" + Number(s.cost_gbp).toFixed(2)) : "—"));
-    setText("rateNow", (cr.pence_per_kwh!=null ? (Number(cr.pence_per_kwh).toFixed(2) + " p/kWh") : "—"));
+    setText("seasonKwh", s.kwh ?? "");
+    setText("seasonCost", (s.cost_gbp!=null ? ("" + Number(s.cost_gbp).toFixed(2)) : ""));
+    setText("rateNow", (cr.pence_per_kwh!=null ? (Number(cr.pence_per_kwh).toFixed(2) + " p/kWh") : ""));
 
-    const start = season.start ? fmtDateShort(season.start) : "—";
-    const end = season.end ? fmtDateShort(season.end) : "—";
-    setText("seasonWindow", start + " → " + end);
+    const start = season.start ? fmtDateShort(season.start) : "";
+    const end = season.end ? fmtDateShort(season.end) : "";
+    setText("seasonWindow", start + " ? " + end);
 
     const inp = document.getElementById("rateInput");
     if (inp && cr.pence_per_kwh!=null && !inp.dataset.touched) {
@@ -5098,12 +5284,12 @@ function showHeatingSub(sub) {
         const pill = document.createElement("div");
         pill.className = "pill";
 
-        const startT = (it.training_start || "").slice(11,16) || "—";
-        const finishLabel = it.session_name || "Finish —";
-        const buf = (it.buffer_minutes != null) ? it.buffer_minutes : "—";
+        const startT = (it.training_start || "").slice(11,16) || "";
+        const finishLabel = it.session_name || "Finish ";
+        const buf = (it.buffer_minutes != null) ? it.buffer_minutes : "";
 
         pill.innerHTML =
-          "<div><b>" + startT + "</b> <span class='meta'>• " + finishLabel + "</span><br><span class='meta'>Buffer " + buf + " min</span></div>";
+          "<div><b>" + startT + "</b> <span class='meta'> " + finishLabel + "</span><br><span class='meta'>Buffer " + buf + " min</span></div>";
 
         const xbtn = document.createElement("button");
         xbtn.className = "pillX";
@@ -5290,13 +5476,13 @@ function showHeatingSub(sub) {
     if(key === "result" || key === "pass_fail"){
       const val = (v==null ? "" : String(v)).toUpperCase();
       const cls = (val === "PASS") ? "ok" : (val === "FAIL") ? "bad" : "";
-      return '<span class="pillTiny '+cls+'">'+(val || "—")+'</span>';
+      return '<span class="pillTiny '+cls+'">'+(val || "")+'</span>';
     }
     if(key.includes("ts") || key.includes("time") || key.includes("date")){
-      const s = (v==null ? "—" : String(v));
+      const s = (v==null ? "" : String(v));
       return escapeHtml(s.replace("T"," ").replace("+00:00","Z"));
     }
-    if(v === null || v === undefined) return "—";
+    if(v === null || v === undefined) return "";
     if(typeof v === "boolean") return v ? "TRUE" : "FALSE";
     return escapeHtml(v);
   }
@@ -5325,7 +5511,7 @@ function showHeatingSub(sub) {
     if(resetPage) dataPage = 1;
 
     showErr("dataErr", "");
-    setText("dataMeta", "Loading…");
+    setText("dataMeta", "Loading");
 
     const f = getDataFilters();
     const qs = new URLSearchParams();
@@ -5353,8 +5539,8 @@ function showHeatingSub(sub) {
       renderDbTable(rows, data.columns || null);
       setText("dataMeta",
         (dataSub==="trend" ? "TrendLogs" : (dataSub==="decisions" ? "Control Decisions" : "SmartPitch")) +
-        " • " + total + " rows • page " + page + "/" + pageCount +
-        " • showing " + rows.length
+        "  " + total + " rows  page " + page + "/" + pageCount +
+        "  showing " + rows.length
       );
 
       const bx = document.getElementById("btnExportXlsx");
@@ -5367,7 +5553,7 @@ function showHeatingSub(sub) {
     } catch(e){
       showErr("dataErr", "Data load failed: " + (e && e.message ? e.message : String(e)));
       renderDbTable([], []);
-      setText("dataMeta", "—");
+      setText("dataMeta", "");
       window.__lastTableData = { rows: [], columns: [] };
     }
   }
@@ -5532,12 +5718,12 @@ function showHeatingSub(sub) {
         scales: {
           x: {
             type: 'linear',
-            title: { display: true, text: 'Outside Temp (°C)', color: '#9fb0d7' },
+            title: { display: true, text: 'Outside Temp (C)', color: '#9fb0d7' },
             grid: { color: 'rgba(255,255,255,0.1)' },
             ticks: { color: '#9fb0d7' }
           },
           y: {
-            title: { display: true, text: 'Flow Temp (°C)', color: '#9fb0d7' },
+            title: { display: true, text: 'Flow Temp (C)', color: '#9fb0d7' },
             grid: { color: 'rgba(255,255,255,0.1)' },
             ticks: { color: '#9fb0d7' }
           }
@@ -5550,7 +5736,7 @@ function showHeatingSub(sub) {
           tooltip: {
             callbacks: {
               label: function(context) {
-                return context.dataset.label + ': ' + context.parsed.y.toFixed(1) + '°C at ' + context.parsed.x.toFixed(1) + '°C outside';
+                return context.dataset.label + ': ' + context.parsed.y.toFixed(1) + 'C at ' + context.parsed.x.toFixed(1) + 'C outside';
               }
             }
           }
@@ -5828,7 +6014,7 @@ function showHeatingSub(sub) {
   
   function calculatePowerKw(flowRateLps, flowTempC, returnTempC) {
     // Q = m * c * deltaT
-    // For water: c = 4.186 kJ/(kg·°C), and 1 L water = 1 kg
+    // For water: c = 4.186 kJ/(kgC), and 1 L water = 1 kg
     // Power (kW) = flowRate(L/s) * 4.186 * (flow - return)
     if (!flowRateLps || flowRateLps <= 0) return null;
     const deltaT = flowTempC - returnTempC;
@@ -5854,10 +6040,10 @@ function showHeatingSub(sub) {
       // Only show power when heating is actually enabled
       if (!heatEnabled) {
         if (el) el.textContent = '0.0 kW';
-        if (costEl) costEl.textContent = '£0.00/hr';
+        if (costEl) costEl.textContent = '0.00/hr';
       } else if (flowRate <= 0) {
         if (el) el.textContent = 'Set flow rate';
-        if (costEl) costEl.textContent = '—';
+        if (costEl) costEl.textContent = '';
       } else {
         const secFlow = t.sec_flow_c;
         const secReturn = t.sec_return_c;
@@ -5868,11 +6054,11 @@ function showHeatingSub(sub) {
             el.textContent = powerKw.toFixed(1) + ' kW';
             if (costEl && rate > 0) {
               const costPerHour = (powerKw * rate) / 100;
-              costEl.textContent = '£' + costPerHour.toFixed(2) + '/hr';
+              costEl.textContent = '' + costPerHour.toFixed(2) + '/hr';
             }
           } else {
             el.textContent = '0 kW';
-            if (costEl) costEl.textContent = '£0.00/hr';
+            if (costEl) costEl.textContent = '0.00/hr';
           }
         }
       }
@@ -5943,7 +6129,7 @@ function showHeatingSub(sub) {
       if (!thead || !tbody) return;
       
       const cols = ['temp_band', 'cloud_band', 'humidity_band', 'wind_band', 'sessions', 'pass', 'fail', 'pass_rate', 'avg_lead_hours', 'avg_margin_hours', 'avg_pass_wish', 'avg_fail_wish'];
-      const colLabels = ['Temp', 'Cloud', 'Humidity', 'Wind', 'Sessions', 'Pass', 'Fail', 'Pass %', 'Lead (hrs)', 'Margin (hrs)', 'Pass Wish °C', 'Fail Wish °C'];
+      const colLabels = ['Temp', 'Cloud', 'Humidity', 'Wind', 'Sessions', 'Pass', 'Fail', 'Pass %', 'Lead (hrs)', 'Margin (hrs)', 'Pass Wish C', 'Fail Wish C'];
       
       thead.innerHTML = '<tr>' + colLabels.map(c => '<th>' + c + '</th>').join('') + '</tr>';
       
@@ -5955,10 +6141,10 @@ function showHeatingSub(sub) {
           const rowStyle = isCurrentMatch ? 'background:rgba(46,229,157,0.15);' : '';
           return '<tr style="' + rowStyle + '">' + cols.map(c => {
             let val = r[c];
-            if (c === 'pass_rate') val = (val !== null && val !== undefined ? parseFloat(val).toFixed(0) + '%' : '—');
-            else if (c === 'avg_lead_hours' || c === 'avg_margin_hours') val = (val !== null && val !== undefined ? parseFloat(val).toFixed(1) : '—');
-            else if (c === 'avg_pass_wish' || c === 'avg_fail_wish') val = (val !== null && val !== undefined ? parseFloat(val).toFixed(1) + '°C' : '—');
-            else if (val === null || val === undefined) val = '—';
+            if (c === 'pass_rate') val = (val !== null && val !== undefined ? parseFloat(val).toFixed(0) + '%' : '');
+            else if (c === 'avg_lead_hours' || c === 'avg_margin_hours') val = (val !== null && val !== undefined ? parseFloat(val).toFixed(1) : '');
+            else if (c === 'avg_pass_wish' || c === 'avg_fail_wish') val = (val !== null && val !== undefined ? parseFloat(val).toFixed(1) + 'C' : '');
+            else if (val === null || val === undefined) val = '';
             return '<td>' + val + '</td>';
           }).join('') + '</tr>';
         }).join('');
@@ -6781,7 +6967,7 @@ function saveSmartPitchSettings() {
       
       const setVal = (id, val) => { 
         const el = document.getElementById(id); 
-        if(el) el.textContent = (val !== null && val !== undefined) ? val.toFixed(1) + '°C' : '--°C'; 
+        if(el) el.textContent = (val !== null && val !== undefined) ? val.toFixed(1) + 'C' : '--C'; 
       };
       
       // MB1 = Air temperature
@@ -6801,7 +6987,7 @@ function saveSmartPitchSettings() {
       setVal('modbusMB5', p1Corners8[2]);
       setVal('modbusMB6', p1Corners8[3]);
       const p1Avg8 = p1Corners8.reduce((a,b) => a+b, 0) / p1Corners8.length;
-      document.getElementById('modbusAvgP1').textContent = p1Avg8.toFixed(1) + '°C (-8cm)';
+      document.getElementById('modbusAvgP1').textContent = p1Avg8.toFixed(1) + 'C (-8cm)';
       
       // Pitch 2 sensors
       const p2Centre25 = base25cm + 0.3;            // MB7 Centre at -25cm
@@ -6817,18 +7003,18 @@ function saveSmartPitchSettings() {
       setVal('modbusMB10', p2Corners8[2]);
       setVal('modbusMB11', p2Corners8[3]);
       const p2Avg8 = p2Corners8.reduce((a,b) => a+b, 0) / p2Corners8.length;
-      document.getElementById('modbusAvgP2').textContent = p2Avg8.toFixed(1) + '°C (-8cm)';
+      document.getElementById('modbusAvgP2').textContent = p2Avg8.toFixed(1) + 'C (-8cm)';
       
       // Calculate overall average of all 8 sensors at -8cm for field8 display
       const all8cmSensors = [...p1Corners8, ...p2Corners8];
       const avg8cm = all8cmSensors.reduce((a,b) => a+b, 0) / all8cmSensors.length;
       const field8El = document.getElementById('field8');
-      if (field8El) field8El.textContent = avg8cm.toFixed(1) + '°C';
+      if (field8El) field8El.textContent = avg8cm.toFixed(1) + 'C';
       
       // Average of the 2 centre spots at -25cm
       const avg25cm = (p1Centre25 + p2Centre25) / 2;
       const field25El = document.getElementById('field25');
-      if (field25El) field25El.textContent = avg25cm.toFixed(1) + '°C';
+      if (field25El) field25El.textContent = avg25cm.toFixed(1) + 'C';
       
       // Update last poll time
       document.getElementById('modbusLastPoll').textContent = new Date().toLocaleTimeString();
