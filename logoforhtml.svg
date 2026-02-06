@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="420" height="140" viewBox="0 0 420 140">
-  <defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#2ee59d"/><stop offset="1" stop-color="#7aa7ff"/></linearGradient></defs>
-  <rect x="10" y="14" rx="26" ry="26" width="400" height="112" fill="rgba(0,0,0,0.22)" stroke="rgba(255,255,255,0.22)"/>
-  <text x="210" y="78" text-anchor="middle" font-family="system-ui,Segoe UI,Roboto" font-size="40" font-weight="900" fill="url(#g)">SmartPitch</text>
-  <text x="210" y="104" text-anchor="middle" font-family="system-ui,Segoe UI,Roboto" font-size="12" font-weight="700" fill="rgba(255,255,255,0.55)">DEMO</text>
-</svg>
