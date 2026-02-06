@@ -2,145 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=1280, initial-scale=0.35, maximum-scale=1.0, user-scalable=yes" />
+  <meta name="viewport" content="width=1200, initial-scale=0.33, maximum-scale=3, user-scalable=yes" />
   <title>SmartPitch</title>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script>
-    // ===== DEMO MODE (GitHub Pages) =====
-    // This UI was originally served from Node-RED. On GitHub Pages there is no backend,
-    // so we stub the API endpoints with realistic demo data to keep ALL tabs/sub-tabs working.
-    const DEMO_MODE = true;
-
-    function demoJson(data, status=200){
-      return Promise.resolve(new Response(JSON.stringify(data), {
-        status,
-        headers: { "Content-Type": "application/json" }
-      }));
-    }
-
-    function isoNowPlus(h){ return new Date(Date.now() + h*3600*1000).toISOString(); }
-
-    // Build a 7-day hourly forecast
-    function buildDemoForecast(hours=168){
-      const out = [];
-      const now = Date.now();
-      for(let i=0;i<hours;i++){
-        const t = new Date(now + i*3600*1000);
-        const base = 3 + 3*Math.sin(i/24 * Math.PI*2);
-        const wind = 2 + 8*Math.max(0, Math.sin((i+6)/36 * Math.PI*2));
-        const cloud = Math.round(30 + 60*Math.max(0, Math.sin((i+10)/48 * Math.PI*2)));
-        const hum = Math.round(75 + 20*Math.max(0, Math.sin((i+3)/24 * Math.PI*2)));
-        const feels = base - (wind*0.12);
-        out.push({
-          ts: t.toISOString(),
-          temp_c: Math.round(base*10)/10,
-          feels_like_c: Math.round(feels*10)/10,
-          humidity_pct: hum,
-          wind_speed: Math.round(wind*10)/10,
-          cloud_cover_pct: cloud,
-          precip_mm: Math.max(0, Math.round((Math.sin(i/12)*1.5)*10)/10)
-        });
-      }
-      return out;
-    }
-
-    // Build a 30d timeseries (hourly) for trend chart
-    function buildDemoTimeseries(hours=720){
-      const series = [];
-      const now = Date.now();
-      for(let i=hours;i>=0;i--){
-        const t = new Date(now - i*3600*1000);
-        const outside = 4 + 4*Math.sin((t.getHours()/24)*Math.PI*2);
-        const field8 = 8 + 2*Math.sin((t.getTime()/86400000)*Math.PI*2) + (outside-4)*0.08;
-        const thresh = 3.0;
-        series.push({
-          ts: t.toISOString(),
-          outside_temp_c: Math.round(outside*10)/10,
-          field_8cm_c: Math.round(field8*10)/10,
-          threshold_c: thresh,
-          calculated_flow_c: (outside < thresh ? 45 : 0)
-        });
-      }
-      return series;
-    }
-
-    const _realFetch = window.fetch.bind(window);
-    window.fetch = (url, opts={}) => {
-      if(!DEMO_MODE) return _realFetch(url, opts);
-
-      const u = (typeof url === "string") ? url : (url && url.url ? url.url : "");
-      const path = u.replace(location.origin, "");
-
-      if(path.startsWith("/api/status")){
-        return demoJson({
-          server_time: new Date().toISOString(),
-          latest_trend: {
-            ts: new Date().toISOString(),
-            leaf_frost: (Math.random() > 0.7) ? "FROST" : "CLEAR",
-            field_8cm_c: 8.6,
-            outside_temp_c: 3.1,
-            threshold_c: 3.0,
-            calculated_flow_c: 42.0,
-            return_temp_c: 34.5
-          },
-          counts: { trendlogs: 123456, decisions: 987, sessions: 42 },
-          latest_decision: { suggested_start_ts: isoNowPlus(6), confidence: 0.72 }
-        });
-      }
-
-      if(path.startsWith("/api/timeseries")){
-        const m = path.match(/hours=(\d+)/);
-        const hours = m ? Number(m[1]) : 168;
-        return demoJson({ hours, series: buildDemoTimeseries(Math.min(Math.max(hours,24), 720)) });
-      }
-
-      if(path.startsWith("/api/forecast")){
-        const m = path.match(/hours=(\d+)/);
-        const hours = m ? Number(m[1]) : 168;
-        return demoJson({ hours, series: buildDemoForecast(Math.min(Math.max(hours,24), 168)) });
-      }
-
-      if(path.startsWith("/api/cost")){
-        return demoJson({
-          season_kwh: 18450,
-          season_cost_gbp: 2490.32,
-          rate_p_per_kwh: 13.5,
-          season_window: "01 Oct → today"
-        });
-      }
-
-      if(path.startsWith("/api/learning/recommendation")){
-        return demoJson({
-          next_training: { training_start: isoNowPlus(10), buffer_minutes: 60, playable_by_ts: isoNowPlus(9) },
-          current_bands: { temp_band: "T0..2", wind_band: "W2..5", cloud_band: "C75..100", playable_by_ts: isoNowPlus(9) },
-          matches: { n: 12, pass: 9, pass_rate: 75, used_level: 3, worst_fail_late_min: 90 },
-          recommendation: { start_offset_minutes: 420, suggested_start_ts: isoNowPlus(3), confidence: 0.75, reason: "Cold + cloudy increases leaf-frost persistence. Earlier start avoids late clearance." }
-        });
-      }
-
-      if(path.startsWith("/api/data/")){
-        const rows = [];
-        for(let i=0;i<50;i++){
-          rows.push({
-            ts: new Date(Date.now() - i*60000).toISOString(),
-            point: "PITCH1_FIELD8",
-            value: Number(8.6 + Math.sin(i/10)).toFixed(2),
-            state: (i%7===0) ? "Active" : "Inactive"
-          });
-        }
-        return demoJson({
-          meta: { page: 1, page_size: 50, returned: rows.length, note: "DEMO DATA" },
-          columns: Object.keys(rows[0] || {}),
-          rows
-        });
-      }
-
-      return _realFetch(url, opts);
-    };
-  </script>
-
 
   <style>
     :root{
@@ -1449,13 +1315,72 @@
       pointer-events: none;
     }
   </style>
+
+<script>
+/* ===== Static demo hardening =====
+   - Prevent missing CDN libs from breaking the whole page
+   - Never get stuck on splash screen
+   - Keep original look on mobile by using desktop-width viewport
+*/
+(function(){
+  // Chart.js shim (very small): prevents crashes if Chart CDN is blocked
+  if (!window.Chart){
+    window.Chart = function(){
+      return { update:function(){}, destroy:function(){} };
+    };
+    window.Chart.register = function(){};
+  }
+  // XLSX shim: prevents crashes if XLSX CDN is blocked
+  if (!window.XLSX){
+    window.XLSX = { utils:{}, writeFile:function(){ alert("Export disabled in demo (XLSX library not loaded)."); } };
+  }
+
+  // CDN fallbacks (if jsDelivr blocked)
+  function add(src){
+    var s=document.createElement('script');
+    s.src=src; s.defer=false; s.async=false;
+    document.head.appendChild(s);
+  }
+  window.addEventListener('load', function(){
+    if (window.Chart && window.Chart.name === "Chart" && !window.Chart.defaults){
+      // likely shim still active; try load real Chart.js
+      add('https://unpkg.com/chart.js@4.4.1/dist/chart.umd.min.js');
+    }
+    if (!window.XLSX || !window.XLSX.version){
+      add('https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js');
+    }
+  });
+
+  // Splash killer (always hides)
+  function hideSplash(){
+    var splash = document.getElementById('splashScreen');
+    if (!splash) return;
+    splash.classList.add('fade-out');
+    setTimeout(function(){ splash.style.display='none'; }, 650);
+  }
+  // Hide after 2.5s regardless
+  setTimeout(hideSplash, 2500);
+  // Hide on any error
+  window.addEventListener('error', function(){ setTimeout(hideSplash, 100); });
+  // Allow tap to enter immediately
+  window.addEventListener('DOMContentLoaded', function(){
+    var splash = document.getElementById('splashScreen');
+    if (splash){
+      splash.style.cursor='pointer';
+      splash.title='Tap to enter';
+      splash.addEventListener('click', hideSplash);
+    }
+  });
+})();
+</script>
+
 </head>
 
 <body>
 
 <!-- Splash Screen -->
 <div class="splash-screen" id="splashScreen">
-  <img src="logoforhtml.png" alt="SmartPitch" class="splash-logo">
+  <img src="./logoforhtml.png" onerror="this.onerror=null;this.src='./logoforhtml.svg';" alt="SmartPitch" class="splash-logo">
   <div class="splash-text">Pitch Heating Intelligence</div>
   <div class="splash-loader">
     <div class="splash-dot"></div>
@@ -1469,7 +1394,7 @@
     <div class="topbar">
       <div></div>
       <div class="brand">
-        <img src="logoforhtml.png?v=20260122-7" alt="SmartPitch" />
+        <img src="/logoforhtml.png?v=20260122-7" alt="SmartPitch" />
       </div>
       <div class="chip small">
         <span class="mono" id="serverTime">—</span>
