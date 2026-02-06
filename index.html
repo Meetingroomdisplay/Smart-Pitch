@@ -8,6 +8,27 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
+  <script>
+    // CDN fallbacks (helps on restricted networks where jsDelivr may be blocked)
+    (function(){
+      function add(src){
+        var s=document.createElement('script');
+        s.src=src; s.defer=false; s.async=false;
+        document.head.appendChild(s);
+      }
+      // Chart.js
+      window.addEventListener('load', function(){
+        if (!window.Chart){
+          add('https://unpkg.com/chart.js@4.4.1/dist/chart.umd.min.js');
+        }
+        if (!window.XLSX){
+          add('https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js');
+        }
+      });
+    })();
+  </script>
+
+
   <style>
     :root{
       --bg:#070b14;
@@ -1892,6 +1913,36 @@
 </head>
 
 <body>
+
+<script>
+  // Splash failsafe: never get stuck on splash even if a script fails
+  (function(){
+    function hideSplash(){
+      var splash = document.getElementById('splashScreen');
+      if (!splash) return;
+      splash.classList.add('fade-out');
+      setTimeout(function(){ splash.style.display='none'; }, 850);
+    }
+    // Hide after 6s no matter what
+    setTimeout(hideSplash, 6000);
+
+    // If any JS error happens early, still hide splash
+    window.addEventListener('error', function(){
+      setTimeout(hideSplash, 250);
+    });
+
+    // Allow tap-to-skip (handy for demos)
+    window.addEventListener('DOMContentLoaded', function(){
+      var splash = document.getElementById('splashScreen');
+      if (splash){
+        splash.style.cursor = 'pointer';
+        splash.title = 'Tap to enter demo';
+        splash.addEventListener('click', hideSplash);
+      }
+    });
+  })();
+</script>
+
 
 <!-- Splash Screen -->
 <div class="splash-screen" id="splashScreen">
