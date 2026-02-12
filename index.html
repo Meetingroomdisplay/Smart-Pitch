@@ -3796,8 +3796,8 @@ document.addEventListener("DOMContentLoaded", function() {
     'GET /api/cost': function() {
       return {
         season_to_date: {
-          kwh: 12450,
-          cost_gbp: 1867.50
+          kwh: 859622,
+          cost_gbp: 128943.32
         },
         current_rate: {
           pence_per_kwh: mockState.rate
@@ -5411,7 +5411,7 @@ document.addEventListener("DOMContentLoaded", function() {
             <h3 style="text-align:center; width:100%;">Heat Status</h3>
             <div style="flex:1; display:flex; align-items:center; justify-content:center;">
               <div id="heatStatusIndicator" style="display:flex; align-items:center; gap:10px; padding:12px 18px; border-radius:25px; background:linear-gradient(145deg, #1a1a1a, #252525); border:1px solid #333; box-shadow:0 4px 15px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05); transition: all 0.4s ease;">
-                <div id="heatStatusIcon" style="font-size:20px; filter:grayscale(1) opacity(0.4); transition: all 0.4s ease;">🔥</div>
+                <div id="heatStatusIcon" style="font-size:20px; filter:grayscale(1) opacity(0.4); transition: all 0.4s ease;"></div>
                 <div id="heatStatusText" style="font-size:13px; font-weight:700; letter-spacing:1px; color:#555; text-transform:uppercase; transition: all 0.4s ease;">OFF</div>
               </div>
             </div>
@@ -5603,14 +5603,14 @@ document.addEventListener("DOMContentLoaded", function() {
             </div>
             <div class="mode-buttons">
               <button id="btnSTANDARD" class="mode-btn" onclick="setModeEnhanced('STANDARD')">
-                <div class="mode-btn-icon">🔧</div>
+                <div class="mode-btn-icon"></div>
                 <div class="mode-btn-label">Standard</div>
                 <div class="mode-btn-desc">Manual control</div>
                 <span class="led" id="ledSTANDARD"></span>
               </button>
               
               <button id="btnSMARTPITCH" class="mode-btn smartpitch" onclick="setModeEnhanced('SMARTPITCH')">
-                <div class="mode-btn-icon">🤖</div>
+                <div class="mode-btn-icon"></div>
                 <div class="mode-btn-label">SmartPitch AI</div>
                 <div class="mode-btn-desc">Intelligent automation</div>
                 <span class="led" id="ledSMARTPITCH"></span>
