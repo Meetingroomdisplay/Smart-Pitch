@@ -8681,6 +8681,13 @@ function showHeatingSub(sub) {
     var vig=ctx.createRadialGradient(480,270,200,480,270,520);
     vig.addColorStop(0,'rgba(0,0,0,0)'); vig.addColorStop(1,'rgba(0,0,0,0.35)');
     ctx.fillStyle=vig; ctx.fillRect(0,0,960,540);
+    // Disconnected overlay
+    ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(280,235,400,70);
+    ctx.strokeStyle='rgba(255,80,80,0.6)'; ctx.lineWidth=1; ctx.strokeRect(280,235,400,70);
+    ctx.fillStyle='#ff5050'; ctx.font='bold 20px system-ui,sans-serif'; ctx.textAlign='center';
+    ctx.fillText('LIVE FEED DISCONNECTED',480,265);
+    ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.font='13px system-ui,sans-serif';
+    ctx.fillText('Camera offline \u2014 demo mode',480,290);
     return c.toDataURL('image/png');
   }
 
