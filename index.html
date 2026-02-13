@@ -8,7 +8,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
-  <script>
+<script>
 // ═══════════════════════════════════════════════════════════════════════
 // SmartPitch Demo Mode — Mock API Layer
 // All API calls are intercepted and return realistic demo data.
@@ -4002,6 +4002,7 @@ document.addEventListener("DOMContentLoaded", function() {
 })();
 </script>
 
+
   <style>
     :root{
       --bg:#070b14;
@@ -4173,7 +4174,6 @@ document.addEventListener("DOMContentLoaded", function() {
 
     .chip{
       justify-self:end;
-      grid-column:3;
       border:1px solid var(--border);
       border-radius:999px;
       padding:8px 10px;
@@ -4182,10 +4182,26 @@ document.addEventListener("DOMContentLoaded", function() {
       white-space:nowrap;
     }
     .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
-    #serverTime{
-      color:#fff;
-      font-weight: 950;
-      letter-spacing:0.2px;
+    .clock-widget {
+      justify-self: end;
+      grid-column: 3;
+      text-align: right;
+      padding: 4px 0;
+    }
+    .clock-time {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: 1px;
+      line-height: 1.1;
+    }
+    .clock-date {
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      margin-top: 2px;
     }
 
     .tabs{
@@ -5134,7 +5150,7 @@ document.addEventListener("DOMContentLoaded", function() {
       left: 0;
       right: 0;
       bottom: 0;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='49' viewBox='0 0 28 49'%3E%3Cg fill-rule='evenodd'%3E%3Cg fill='%232ee59d' fill-opacity='0.04'%3E%3Cpath d='M13.99 9.25l13 7.5v15l-13 7.5L1 31.75v-15l12.99-7.5zM3 17.9v12.7l10.99 6.34 11-6.35V17.9l-11-6.34L3 17.9zM0 15l12.98-7.5V0h-2v6.35L0 12.69v2.3zm0 18.5L12.98 41v8h-2v-6.85L0 35.81v-2.3zM15 0v7.5L27.99 15H28v-2.31h-.01L17 6.35V0h-2zm0 49v-8l12.99-7.5H28v2.31h-.01L17 42.15V49h-2z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='49' viewBox='0 0 28 49'%3E%3Cg fill-rule='evenodd'%3E%3Cg fill='%2364b4ff' fill-opacity='0.03'%3E%3Cpath d='M13.99 9.25l13 7.5v15l-13 7.5L1 31.75v-15l12.99-7.5zM3 17.9v12.7l10.99 6.34 11-6.35V17.9l-11-6.34L3 17.9zM0 15l12.98-7.5V0h-2v6.35L0 12.69v2.3zm0 18.5L12.98 41v8h-2v-6.85L0 35.81v-2.3zM15 0v7.5L27.99 15H28v-2.31h-.01L17 6.35V0h-2zm0 49v-8l12.99-7.5H28v2.31h-.01L17 42.15V49h-2z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
       opacity: 0;
       transition: opacity 1s ease;
       pointer-events: none;
@@ -5306,34 +5322,27 @@ document.addEventListener("DOMContentLoaded", function() {
       box-shadow: inset 0 0 30px rgba(255,159,67,0.2);
       pointer-events: none;
     }
-  
-    .demo-badge {
+
+    /* ── Starfield Background ── */
+    #starfield {
       position: fixed;
-      top: 10px;
-      right: 16px;
-      background: rgba(255,159,67,0.2);
-      border: 1px solid rgba(255,159,67,0.5);
-      color: #ff9f43;
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 1.5px;
-      padding: 4px 12px;
-      border-radius: 20px;
-      z-index: 10000;
-      text-transform: uppercase;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0;
       pointer-events: none;
     }
-
+    .wrap {
+      position: relative;
+      z-index: 1;
+    }
   </style>
 </head>
 
 <body>
-<div class="demo-badge">Demo Mode</div>
-
 
 <!-- Splash Screen -->
 <div class="splash-screen" id="splashScreen">
-  <img src="" alt="SmartPitch" class="splash-logo" id="splashLogo">
+  <img src="/logoforhtml.png" alt="SmartPitch" class="splash-logo">
   <div class="splash-text">Pitch Heating Intelligence</div>
   <div class="splash-loader">
     <div class="splash-dot"></div>
@@ -5347,10 +5356,11 @@ document.addEventListener("DOMContentLoaded", function() {
     <div class="topbar">
       <div></div>
       <div class="brand">
-        <img src="" alt="SmartPitch" id="topbarLogo" />
+        <img src="/logoforhtml.png?v=20260122-7" alt="SmartPitch" />
       </div>
-      <div class="chip small">
-        <span class="mono" id="serverTime">—</span>
+      <div class="clock-widget">
+        <div class="clock-time" id="clockTime">—</div>
+        <div class="clock-date" id="clockDate">—</div>
       </div>
     </div>
 
@@ -5360,13 +5370,14 @@ document.addEventListener("DOMContentLoaded", function() {
       <button class="tabbtn" id="tabSchedule" onclick="showTab('Schedule')">Schedule</button>
       <button class="tabbtn" id="tabHeating" onclick="showTab('Heating')">Heating Control</button>
       <button class="tabbtn" id="tabData" onclick="showTab('Data')">Data</button>
+      <button class="tabbtn" id="tabEnergy" onclick="showTab('Energy')">Energy</button>
       <button class="tabbtn" id="tabAdvanced" onclick="showTab('Advanced')">Advanced</button>
     </div>
 
     <!-- DASHBOARD -->
     <div class="panel" id="panelDashboard">
       <div id="forecastOverrideIndicator" style="display:none; background:rgba(255,159,67,0.15); border:1px solid rgba(255,159,67,0.4); border-radius:8px; padding:8px 12px; margin-bottom:10px; align-items:center; gap:8px;">
-        <span style="color:#ff9f43; font-size:18px;">⚠️</span>
+        
         <span style="color:#ff9f43; font-size:12px; font-weight:600;">FORECAST OVERRIDE ACTIVE</span>
         <span style="color:var(--muted); font-size:11px;">Actual temp significantly colder than forecast - using actual readings</span>
       </div>
@@ -5396,22 +5407,14 @@ document.addEventListener("DOMContentLoaded", function() {
                 <div class="label">Heating</div>
                 <div class="value" style="justify-content:center;"><span class="mono" id="liveKw" style="color:#2ee59d;">—</span></div>
               </div>
-              <div style="display:flex; flex-direction:column; justify-content:center; padding:8px 12px; background:rgba(0,0,0,0.2); border-radius:8px; border:1px solid #3a4a5a;">
-                <label style="color:#9fb0d7; font-size:10px; margin-bottom:4px;">Flow Rate</label>
-                <div style="display:flex; align-items:center; gap:6px;">
-                  <input type="number" id="flowRateInput" step="0.1" min="0" max="50" placeholder="0.0" 
-                    style="width:60px; padding:5px 6px; background:#1a2530; border:1px solid #3a4a5a; border-radius:4px; color:#2ee59d; font-size:14px; font-weight:bold; text-align:center;"
-                    onchange="saveFlowRate(this.value)">
-                  <span style="color:#9fb0d7; font-size:11px;">L/s</span>
-                </div>
-              </div>
+              
             </div>
           </div>
           <div class="card" style="flex:0 0 120px; display:flex; flex-direction:column; align-items:center;">
             <h3 style="text-align:center; width:100%;">Heat Status</h3>
             <div style="flex:1; display:flex; align-items:center; justify-content:center;">
               <div id="heatStatusIndicator" style="display:flex; align-items:center; gap:10px; padding:12px 18px; border-radius:25px; background:linear-gradient(145deg, #1a1a1a, #252525); border:1px solid #333; box-shadow:0 4px 15px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05); transition: all 0.4s ease;">
-                <div id="heatStatusIcon" style="font-size:20px; filter:grayscale(1) opacity(0.4); transition: all 0.4s ease;"></div>
+                <div id="heatStatusIcon" style="font-size:20px; filter:grayscale(1) opacity(0.4); transition: all 0.4s ease;">🔥</div>
                 <div id="heatStatusText" style="font-size:13px; font-weight:700; letter-spacing:1px; color:#555; text-transform:uppercase; transition: all 0.4s ease;">OFF</div>
               </div>
             </div>
@@ -5467,13 +5470,9 @@ document.addEventListener("DOMContentLoaded", function() {
             </div>
 
             <div class="kpi">
-              <div class="label">Energy rate (p/kWh)</div>
-              <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px;">
-                <input id="rateInput" type="number" step="0.01" min="0" style="width:160px;" />
-                <button onclick="saveRate()">Save</button>
-                <div class="small">Current: <span class="mono" id="rateNow">—</span></div>
-              </div>
-              <div class="small" style="margin-top:8px;">
+              <div class="label">Energy rate</div>
+              <div class="value" style="font-size:0.95rem;"><span class="mono" id="rateNow">—</span> <span class="small" style="color:var(--muted);">p/kWh</span></div>
+              <div class="small" style="margin-top:4px;">
                 Season window: <span class="mono" id="seasonWindow">—</span>
               </div>
             </div>
@@ -5603,22 +5602,20 @@ document.addEventListener("DOMContentLoaded", function() {
             </div>
             <div class="mode-buttons">
               <button id="btnSTANDARD" class="mode-btn" onclick="setModeEnhanced('STANDARD')">
-                <div class="mode-btn-icon"></div>
-                <div class="mode-btn-label">Standard</div>
+                                <div class="mode-btn-label">Standard</div>
                 <div class="mode-btn-desc">Manual control</div>
                 <span class="led" id="ledSTANDARD"></span>
               </button>
               
               <button id="btnSMARTPITCH" class="mode-btn smartpitch" onclick="setModeEnhanced('SMARTPITCH')">
-                <div class="mode-btn-icon"></div>
-                <div class="mode-btn-label">SmartPitch AI</div>
+                                <div class="mode-btn-label">SmartPitch</div>
                 <div class="mode-btn-desc">Intelligent automation</div>
                 <span class="led" id="ledSMARTPITCH"></span>
               </button>
             </div>
             <div class="mode-status">Current mode: <span class="mono" id="modeNow2">—</span></div>
             <div id="aiStatusPanel" class="ai-status-panel">
-              <div class="ai-status-header"><div class="ai-pulse"></div><span>AI ENGINE ACTIVE</span></div>
+              <div class="ai-status-header"><div class="ai-pulse"></div><span>LEARNING ENGINE ACTIVE</span></div>
               <div class="ai-submode-display">
                 <div class="ai-submode-label">Current Phase</div>
                 <div class="ai-submode-value" id="aiSubmode">MONITOR</div>
@@ -6049,77 +6046,290 @@ document.addEventListener("DOMContentLoaded", function() {
         </div>
 
         <div id="learningContent" style="display:none; margin-top:12px;">
-          <div class="card" style="margin-bottom:16px;">
-            <h4 style="margin:0 0 12px 0;">Weather Band Definitions</h4>
-            <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:16px;">
-              <div>
-                <div class="small" style="color:var(--muted); margin-bottom:6px;">Temperature Bands</div>
-                <div class="mono small">T&lt;=-6: ≤ -6°C (Severe frost)</div>
-                <div class="mono small">T-6..-4: -6 to -4°C (Hard frost)</div>
-                <div class="mono small">T-4..-2: -4 to -2°C (Moderate frost)</div>
-                <div class="mono small">T-2..0: -2 to 0°C (Light frost)</div>
-                <div class="mono small">T0..2: 0 to 2°C (Frost risk)</div>
-                <div class="mono small">T&gt;2: &gt; 2°C (Low risk)</div>
-              </div>
-              <div>
-                <div class="small" style="color:var(--muted); margin-bottom:6px;">Cloud Cover Bands</div>
-                <div class="mono small">C0..10: &lt; 10% (Clear - fast defrost)</div>
-                <div class="mono small">C10..30: 10-30% (Mostly clear)</div>
-                <div class="mono small">C30..60: 30-60% (Partial cloud)</div>
-                <div class="mono small">C60..85: 60-85% (Mostly cloudy)</div>
-                <div class="mono small">C&gt;85: ≥ 85% (Overcast - no solar)</div>
-              </div>
-              <div>
-                <div class="small" style="color:var(--muted); margin-bottom:6px;">Humidity Bands</div>
-                <div class="mono small">H&lt;60: &lt; 60% (Dry)</div>
-                <div class="mono small">H60..80: 60-80% (Moderate)</div>
-                <div class="mono small">H&gt;80: ≥ 80% (High - frost risk)</div>
-              </div>
-              <div>
-                <div class="small" style="color:var(--muted); margin-bottom:6px;">Wind Bands</div>
-                <div class="mono small">W0..2: &lt; 2 m/s (Calm)</div>
-                <div class="mono small">W2..5: 2-5 m/s (Light)</div>
-                <div class="mono small">W5..8: 5-8 m/s (Moderate)</div>
-                <div class="mono small">W&gt;8: ≥ 8 m/s (Strong)</div>
-              </div>
-            </div>
-          </div>
           
-          <div class="card" style="margin-bottom:16px; text-align:center;">
-            <h4 style="margin:0 0 12px 0;">Current Conditions</h4>
-            <div style="display:flex; gap:20px; flex-wrap:wrap; justify-content:center;">
-              <div><span class="small" style="color:var(--muted);">Temp:</span> <span id="currentTempBand" class="mono">—</span></div>
-              <div><span class="small" style="color:var(--muted);">Cloud:</span> <span id="currentCloudBand" class="mono">—</span></div>
-              <div><span class="small" style="color:var(--muted);">Humidity:</span> <span id="currentHumidityBand" class="mono">—</span></div>
-              <div><span class="small" style="color:var(--muted);">Wind:</span> <span id="currentWindBand" class="mono">—</span></div>
-            </div>
+          <!-- Learning sub-sub-tabs -->
+          <div style="display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap;">
+            <button class="subtabbtn active" id="lrnSubLive" onclick="showLearningSub('live')">Live Match</button>
+            <button class="subtabbtn" id="lrnSubHow" onclick="showLearningSub('how')">How It Works</button>
+            <button class="subtabbtn" id="lrnSubBands" onclick="showLearningSub('bands')">Bands Reference</button>
+            <button class="subtabbtn" id="lrnSubHistory" onclick="showLearningSub('history')">Session History</button>
           </div>
-          
-          <div class="card" id="forecastMatchCard" style="margin-bottom:16px; text-align:center;">
-    <h4 style="margin:0 0 12px 0;">Forecast Match</h4>
-    <div class="small" style="color:var(--muted); margin-bottom:10px;">What the control logic is matching against for the next session</div>
-    <div style="display:flex; gap:20px; flex-wrap:wrap; margin-bottom:12px; justify-content:center;">
-      <div><span class="small" style="color:var(--muted);">Forecast Temp:</span> <span id="fmTempBand" class="mono">—</span></div>
-      <div><span class="small" style="color:var(--muted);">Forecast Cloud:</span> <span id="fmCloudBand" class="mono">—</span></div>
-      <div><span class="small" style="color:var(--muted);">Forecast Humidity:</span> <span id="fmHumidityBand" class="mono">—</span></div>
-      <div><span class="small" style="color:var(--muted);">Forecast Wind:</span> <span id="fmWindBand" class="mono">—</span></div>
-    </div>
-    <div id="fmMatchResult" style="padding:10px; border-radius:6px; background:var(--bg); text-align:center;">
-      <span class="mono small" style="color:var(--muted);">No match data</span>
-    </div>
-  </div>
 
-  <div class="card">
-            <h4 style="margin:0 0 12px 0;">Historical Performance by Weather Bands</h4>
-            <div class="small" style="color:var(--muted); margin-bottom:12px;">Shows pass/fail rate and average heating lead time for each weather combination</div>
-            <div class="dbTableWrap" style="overflow-x:auto;">
-              <table class="dbTable" id="learningTable">
-                <thead id="learningThead"></thead>
-                <tbody id="learningTbody"></tbody>
-              </table>
+          <!-- ==================== LIVE MATCH ==================== -->
+          <div id="lrnPanelLive">
+
+            <!-- Current Conditions -->
+            <div class="card" style="margin-bottom:14px;">
+              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+                <h4 style="margin:0;">Current Conditions</h4>
+                <span class="small" style="color:var(--muted);">Live from sensors</span>
+              </div>
+              <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                <div style="flex:1; min-width:120px; background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:10px 14px; text-align:center;">
+                  <div class="small" style="color:var(--muted); margin-bottom:4px;">Temperature</div>
+                  <div id="currentTempBand" class="mono" style="font-size:1.1rem; font-weight:600;">—</div>
+                </div>
+                <div style="flex:1; min-width:120px; background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:10px 14px; text-align:center;">
+                  <div class="small" style="color:var(--muted); margin-bottom:4px;">Cloud Cover</div>
+                  <div id="currentCloudBand" class="mono" style="font-size:1.1rem; font-weight:600;">—</div>
+                </div>
+                <div style="flex:1; min-width:120px; background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:10px 14px; text-align:center;">
+                  <div class="small" style="color:var(--muted); margin-bottom:4px;">Humidity</div>
+                  <div id="currentHumidityBand" class="mono" style="font-size:1.1rem; font-weight:600;">—</div>
+                </div>
+                <div style="flex:1; min-width:120px; background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:10px 14px; text-align:center;">
+                  <div class="small" style="color:var(--muted); margin-bottom:4px;">Wind</div>
+                  <div id="currentWindBand" class="mono" style="font-size:1.1rem; font-weight:600;">—</div>
+                </div>
+              </div>
             </div>
-            <div id="learningMeta" class="small" style="margin-top:8px; color:var(--muted);">—</div>
+
+            <!-- Forecast Match -->
+            <div class="card" id="forecastMatchCard" style="margin-bottom:14px;">
+              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+                <h4 style="margin:0;">Next Session Forecast</h4>
+                <span class="small" style="color:var(--muted);">12h avg before deadline</span>
+              </div>
+              <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:14px;">
+                <div style="flex:1; min-width:120px; background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:10px 14px; text-align:center;">
+                  <div class="small" style="color:var(--muted); margin-bottom:4px;">Forecast Temp</div>
+                  <div id="fmTempBand" class="mono" style="font-size:1.1rem; font-weight:600;">—</div>
+                </div>
+                <div style="flex:1; min-width:120px; background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:10px 14px; text-align:center;">
+                  <div class="small" style="color:var(--muted); margin-bottom:4px;">Forecast Cloud</div>
+                  <div id="fmCloudBand" class="mono" style="font-size:1.1rem; font-weight:600;">—</div>
+                </div>
+                <div style="flex:1; min-width:120px; background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:10px 14px; text-align:center;">
+                  <div class="small" style="color:var(--muted); margin-bottom:4px;">Forecast Humidity</div>
+                  <div id="fmHumidityBand" class="mono" style="font-size:1.1rem; font-weight:600;">—</div>
+                </div>
+                <div style="flex:1; min-width:120px; background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:10px 14px; text-align:center;">
+                  <div class="small" style="color:var(--muted); margin-bottom:4px;">Forecast Wind</div>
+                  <div id="fmWindBand" class="mono" style="font-size:1.1rem; font-weight:600;">—</div>
+                </div>
+              </div>
+
+              <!-- Match Result -->
+              <div id="fmMatchResult" style="padding:14px; border-radius:10px; background:var(--panel2); border:1px solid var(--border);">
+                <span class="mono small" style="color:var(--muted);">No match data</span>
+              </div>
+            </div>
+
+            <!-- Active Recommendation -->
+            <div class="card" style="margin-bottom:14px;">
+              <h4 style="margin:0 0 12px 0;">Active Recommendation</h4>
+              <div id="lrnActiveRec" style="color:var(--muted); font-size:0.88rem;">
+                Waiting for data...
+              </div>
+            </div>
           </div>
+
+          <!-- ==================== HOW IT WORKS ==================== -->
+          <div id="lrnPanelHow" style="display:none;">
+
+            <div class="card" style="margin-bottom:14px;">
+              <h4 style="margin:0 0 14px 0;">Tiered Fallback System</h4>
+              <p style="color:var(--muted); font-size:0.85rem; margin:0 0 16px 0;">
+                SmartPitch classifies the forecast for the 12 hours before each session into weather bands, 
+                then searches historical sessions for a match. If an exact 4-band match exists, it uses those parameters. 
+                Otherwise it progressively relaxes the match, dropping weather dimensions one at a time.
+              </p>
+
+              <!-- Tier cascade -->
+              <div style="display:flex; flex-direction:column; gap:0;">
+
+                <!-- TIER 1 -->
+                <div style="display:flex; align-items:stretch; gap:0;">
+                  <div style="width:4px; background:#2ee59d; border-radius:4px 4px 0 0;"></div>
+                  <div style="flex:1; padding:12px 16px; background:rgba(46,229,157,0.08); border:1px solid rgba(46,229,157,0.25); border-radius:10px; margin-left:12px; margin-bottom:6px;">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:4px;">
+                      <span class="mono" style="color:#2ee59d; font-weight:700; font-size:0.9rem;">TIER 1</span>
+                      <span style="color:var(--text); font-weight:600;">Exact Match</span>
+                      <span style="color:var(--muted); font-size:0.8rem;">— 4 bands</span>
+                    </div>
+                    <div style="color:var(--muted); font-size:0.82rem;">Temp + Cloud + Humidity + Wind all match. Best possible prediction from directly comparable sessions.</div>
+                  </div>
+                </div>
+                <div style="width:4px; height:8px; background:var(--border); margin-left:0;"></div>
+
+                <!-- TIER 2 -->
+                <div style="display:flex; align-items:stretch; gap:0;">
+                  <div style="width:4px; background:#7aa7ff;"></div>
+                  <div style="flex:1; padding:12px 16px; background:rgba(122,167,255,0.08); border:1px solid rgba(122,167,255,0.25); border-radius:10px; margin-left:12px; margin-bottom:6px;">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:4px;">
+                      <span class="mono" style="color:#7aa7ff; font-weight:700; font-size:0.9rem;">TIER 2</span>
+                      <span style="color:var(--text); font-weight:600;">3-Band</span>
+                      <span style="color:var(--muted); font-size:0.8rem;">— drops humidity</span>
+                    </div>
+                    <div style="color:var(--muted); font-size:0.82rem;">Temp + Cloud + Wind. Humidity has the weakest correlation with frost outcomes so it is dropped first.</div>
+                  </div>
+                </div>
+                <div style="width:4px; height:8px; background:var(--border); margin-left:0;"></div>
+
+                <!-- TIER 3 -->
+                <div style="display:flex; align-items:stretch; gap:0;">
+                  <div style="width:4px; background:#ffd166;"></div>
+                  <div style="flex:1; padding:12px 16px; background:rgba(255,209,102,0.08); border:1px solid rgba(255,209,102,0.25); border-radius:10px; margin-left:12px; margin-bottom:6px;">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:4px;">
+                      <span class="mono" style="color:#ffd166; font-weight:700; font-size:0.9rem;">TIER 3</span>
+                      <span style="color:var(--text); font-weight:600;">2-Band</span>
+                      <span style="color:var(--muted); font-size:0.8rem;">— temp + cloud only</span>
+                    </div>
+                    <div style="color:var(--muted); font-size:0.82rem;">The two most important factors: temperature determines frost severity, cloud cover determines radiative cooling rate.</div>
+                  </div>
+                </div>
+                <div style="width:4px; height:8px; background:var(--border); margin-left:0;"></div>
+
+                <!-- TIER 4 -->
+                <div style="display:flex; align-items:stretch; gap:0;">
+                  <div style="width:4px; background:#f08060;"></div>
+                  <div style="flex:1; padding:12px 16px; background:rgba(240,128,96,0.08); border:1px solid rgba(240,128,96,0.25); border-radius:10px; margin-left:12px; margin-bottom:6px;">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:4px;">
+                      <span class="mono" style="color:#f08060; font-weight:700; font-size:0.9rem;">TIER 4</span>
+                      <span style="color:var(--text); font-weight:600;">Temp Only</span>
+                      <span style="color:var(--muted); font-size:0.8rem;">— 1 band + heat curve blend</span>
+                    </div>
+                    <div style="color:var(--muted); font-size:0.82rem;">Only temperature band matches. Learning data is broad, so the recommendation is <b>averaged with the heat curve</b> to keep it grounded in physics.</div>
+                  </div>
+                </div>
+                <div style="width:4px; height:8px; background:var(--border); margin-left:0;"></div>
+
+                <!-- TIER 5 -->
+                <div style="display:flex; align-items:stretch; gap:0;">
+                  <div style="width:4px; background:#888;"></div>
+                  <div style="flex:1; padding:12px 16px; background:rgba(136,136,136,0.08); border:1px solid rgba(136,136,136,0.25); border-radius:10px; margin-left:12px; margin-bottom:6px;">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:4px;">
+                      <span class="mono" style="color:#888; font-weight:700; font-size:0.9rem;">TIER 5</span>
+                      <span style="color:var(--text); font-weight:600;">Global Average</span>
+                      <span style="color:var(--muted); font-size:0.8rem;">— all sessions + heat curve blend</span>
+                    </div>
+                    <div style="color:var(--muted); font-size:0.82rem;">No weather-specific match possible. Averages all historical sessions regardless of conditions. <b>Blended with heat curve</b> since global averages may not suit current weather.</div>
+                  </div>
+                </div>
+                <div style="width:4px; height:8px; background:var(--border); margin-left:0;"></div>
+
+                <!-- FALLBACK -->
+                <div style="display:flex; align-items:stretch; gap:0;">
+                  <div style="width:4px; background:#555; border-radius:0 0 4px 4px;"></div>
+                  <div style="flex:1; padding:12px 16px; background:var(--panel2); border:1px solid var(--border); border-radius:10px; margin-left:12px;">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:4px;">
+                      <span class="mono" style="color:#555; font-weight:700; font-size:0.9rem;">FALLBACK</span>
+                      <span style="color:var(--text); font-weight:600;">Heat Curve Only</span>
+                      <span style="color:var(--muted); font-size:0.8rem;">— no learning data</span>
+                    </div>
+                    <div style="color:var(--muted); font-size:0.82rem;">Fewer than 3 sessions in the database. Uses the heat curve with soil-deficit adjustment until enough data is collected.</div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- How classification works -->
+            <div class="card" style="margin-bottom:14px;">
+              <h4 style="margin:0 0 12px 0;">How Sessions Are Classified</h4>
+              <div style="color:var(--muted); font-size:0.85rem; line-height:1.7;">
+                <div style="display:flex; align-items:start; gap:10px; margin-bottom:8px;">
+                  <span style="color:var(--accent); font-weight:700; min-width:20px;">1.</span>
+                  <span>The system takes the <b style="color:var(--text);">12-hour forecast window</b> before each session deadline and averages the temperature, cloud cover, humidity, and wind speed.</span>
+                </div>
+                <div style="display:flex; align-items:start; gap:10px; margin-bottom:8px;">
+                  <span style="color:var(--accent); font-weight:700; min-width:20px;">2.</span>
+                  <span>These averages are bucketed into <b style="color:var(--text);">weather bands</b> (e.g. T-2..0, C0..10). See the Bands Reference tab for all thresholds.</span>
+                </div>
+                <div style="display:flex; align-items:start; gap:10px; margin-bottom:8px;">
+                  <span style="color:var(--accent); font-weight:700; min-width:20px;">3.</span>
+                  <span>The bands are matched against historical sessions to find <b style="color:var(--text);">what worked before</b> in similar conditions — lead time, flow temperature, energy used, pass/fail rate.</span>
+                </div>
+                <div style="display:flex; align-items:start; gap:10px;">
+                  <span style="color:var(--accent); font-weight:700; min-width:20px;">4.</span>
+                  <span>The system uses the <b style="color:var(--text);">most energy-efficient</b> parameters that still achieved a pass, progressively relaxing the match if no exact data exists.</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Heat curve blending -->
+            <div class="card">
+              <h4 style="margin:0 0 12px 0;">Heat Curve Blending (TIER 4 &amp; 5)</h4>
+              <div style="color:var(--muted); font-size:0.85rem; line-height:1.7;">
+                <p style="margin:0 0 8px 0;">When the match quality is poor (TIER 4 or 5), the learning recommendation is averaged with the heat curve setpoint:</p>
+                <div style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px 14px; font-family:monospace; font-size:0.85rem; color:var(--text); margin-bottom:8px;">
+                  setpoint = (learning temp + heat curve temp) / 2
+                </div>
+                <p style="margin:0;">This prevents the system from blindly following a global average that may have been built from mild-weather sessions when facing a severe frost. The heat curve provides a physics-based sanity check.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- ==================== BANDS REFERENCE ==================== -->
+          <div id="lrnPanelBands" style="display:none;">
+            <div class="card">
+              <h4 style="margin:0 0 14px 0;">Weather Band Definitions</h4>
+              <p style="color:var(--muted); font-size:0.85rem; margin:0 0 16px 0;">Forecast values over the 12-hour window before each session are averaged and classified into these bands.</p>
+              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px;">
+                
+                <div style="background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:14px;">
+                  <div style="color:var(--text); font-weight:600; margin-bottom:8px;">Temperature</div>
+                  <div style="display:flex; flex-direction:column; gap:4px; font-size:0.82rem;">
+                    <div style="display:flex; justify-content:space-between;"><span class="mono" style="color:#f08060;">T&lt;=-6</span><span style="color:var(--muted);"> \u2264 -6\u00b0C &bull; Severe frost</span></div>
+                    <div style="display:flex; justify-content:space-between;"><span class="mono" style="color:#f08060;">T-6..-4</span><span style="color:var(--muted);"> -6 to -4\u00b0C &bull; Hard frost</span></div>
+                    <div style="display:flex; justify-content:space-between;"><span class="mono" style="color:#ffd166;">T-4..-2</span><span style="color:var(--muted);"> -4 to -2\u00b0C &bull; Moderate frost</span></div>
+                    <div style="display:flex; justify-content:space-between;"><span class="mono" style="color:#ffd166;">T-2..0</span><span style="color:var(--muted);"> -2 to 0\u00b0C &bull; Light frost</span></div>
+                    <div style="display:flex; justify-content:space-between;"><span class="mono" style="color:#7aa7ff;">T0..2</span><span style="color:var(--muted);"> 0 to 2\u00b0C &bull; Frost risk</span></div>
+                    <div style="display:flex; justify-content:space-between;"><span class="mono" style="color:#2ee59d;">T&gt;2</span><span style="color:var(--muted);"> &gt; 2\u00b0C &bull; Low risk</span></div>
+                  </div>
+                </div>
+
+                <div style="background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:14px;">
+                  <div style="color:var(--text); font-weight:600; margin-bottom:8px;">Cloud Cover</div>
+                  <div style="display:flex; flex-direction:column; gap:4px; font-size:0.82rem;">
+                    <div style="display:flex; justify-content:space-between;"><span class="mono" style="color:#f08060;">C0..10</span><span style="color:var(--muted);"> &lt; 10% &bull; Clear sky</span></div>
+                    <div style="display:flex; justify-content:space-between;"><span class="mono" style="color:#ffd166;">C10..30</span><span style="color:var(--muted);"> 10-30% &bull; Mostly clear</span></div>
+                    <div style="display:flex; justify-content:space-between;"><span class="mono" style="color:#7aa7ff;">C30..60</span><span style="color:var(--muted);"> 30-60% &bull; Partial cloud</span></div>
+                    <div style="display:flex; justify-content:space-between;"><span class="mono" style="color:#7aa7ff;">C60..85</span><span style="color:var(--muted);"> 60-85% &bull; Mostly cloudy</span></div>
+                    <div style="display:flex; justify-content:space-between;"><span class="mono" style="color:#2ee59d;">C&gt;85</span><span style="color:var(--muted);"> \u2265 85% &bull; Overcast</span></div>
+                  </div>
+                </div>
+
+                <div style="background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:14px;">
+                  <div style="color:var(--text); font-weight:600; margin-bottom:8px;">Humidity</div>
+                  <div style="display:flex; flex-direction:column; gap:4px; font-size:0.82rem;">
+                    <div style="display:flex; justify-content:space-between;"><span class="mono" style="color:#2ee59d;">H&lt;60</span><span style="color:var(--muted);"> &lt; 60% &bull; Dry</span></div>
+                    <div style="display:flex; justify-content:space-between;"><span class="mono" style="color:#7aa7ff;">H60..80</span><span style="color:var(--muted);"> 60-80% &bull; Moderate</span></div>
+                    <div style="display:flex; justify-content:space-between;"><span class="mono" style="color:#f08060;">H&gt;80</span><span style="color:var(--muted);"> \u2265 80% &bull; High</span></div>
+                  </div>
+                </div>
+
+                <div style="background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:14px;">
+                  <div style="color:var(--text); font-weight:600; margin-bottom:8px;">Wind Speed</div>
+                  <div style="display:flex; flex-direction:column; gap:4px; font-size:0.82rem;">
+                    <div style="display:flex; justify-content:space-between;"><span class="mono" style="color:#f08060;">W0..2</span><span style="color:var(--muted);"> &lt; 2 m/s &bull; Calm</span></div>
+                    <div style="display:flex; justify-content:space-between;"><span class="mono" style="color:#ffd166;">W2..5</span><span style="color:var(--muted);"> 2-5 m/s &bull; Light</span></div>
+                    <div style="display:flex; justify-content:space-between;"><span class="mono" style="color:#7aa7ff;">W5..8</span><span style="color:var(--muted);"> 5-8 m/s &bull; Moderate</span></div>
+                    <div style="display:flex; justify-content:space-between;"><span class="mono" style="color:#2ee59d;">W&gt;8</span><span style="color:var(--muted);"> \u2265 8 m/s &bull; Strong</span></div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+          <!-- ==================== SESSION HISTORY ==================== -->
+          <div id="lrnPanelHistory" style="display:none;">
+            <div class="card">
+              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+                <h4 style="margin:0;">Historical Performance by Weather Bands</h4>
+              </div>
+              <p style="color:var(--muted); font-size:0.85rem; margin:0 0 12px 0;">Each row is a unique weather band combination. The highlighted row matches current forecast conditions.</p>
+              <div class="dbTableWrap" style="overflow-x:auto;">
+                <table class="dbTable" id="learningTable">
+                  <thead id="learningThead"></thead>
+                  <tbody id="learningTbody"></tbody>
+                </table>
+              </div>
+              <div id="learningMeta" class="small" style="margin-top:10px; color:var(--muted);">—</div>
+            </div>
+          </div>
+
         </div>
 
         <div id="trendSmartContent">
@@ -6183,6 +6393,162 @@ document.addEventListener("DOMContentLoaded", function() {
 
 
     <!-- ADVANCED -->
+    <div class="panel" id="panelEnergy" style="display:none;">
+<!-- Energy Usage Chart -->
+          <div class="card" style="margin-bottom:16px; border-left:3px solid var(--accent);">
+            <div style="display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:14px;">
+              <div>
+                <h4 style="margin:0; color:#fff; font-weight:700;">Energy Usage Chart</h4>
+                <div class="small" style="color:var(--muted);">Historical energy consumption and cost over time</div>
+              </div>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:14px;">
+              <div style="display:flex; align-items:center; gap:6px;">
+                <label style="color:var(--muted); font-size:0.85rem;">From</label>
+                <select id="ecStartD" style="padding:6px 4px; background:var(--bg); border:1px solid var(--border2); border-radius:8px; color:var(--accent); font-size:0.9rem; font-family:ui-monospace,monospace; cursor:pointer;"></select>
+                  <span style="color:var(--muted);">/</span>
+                  <select id="ecStartM" style="padding:6px 4px; background:var(--bg); border:1px solid var(--border2); border-radius:8px; color:var(--accent); font-size:0.9rem; font-family:ui-monospace,monospace; cursor:pointer;"></select>
+                  <span style="color:var(--muted);">/</span>
+                  <select id="ecStartY" style="padding:6px 4px; background:var(--bg); border:1px solid var(--border2); border-radius:8px; color:var(--accent); font-size:0.9rem; font-family:ui-monospace,monospace; cursor:pointer;"></select>
+              </div>
+              <div style="display:flex; align-items:center; gap:6px;">
+                <label style="color:var(--muted); font-size:0.85rem;">To</label>
+                <select id="ecEndD" style="padding:6px 4px; background:var(--bg); border:1px solid var(--border2); border-radius:8px; color:var(--accent); font-size:0.9rem; font-family:ui-monospace,monospace; cursor:pointer;"></select>
+                  <span style="color:var(--muted);">/</span>
+                  <select id="ecEndM" style="padding:6px 4px; background:var(--bg); border:1px solid var(--border2); border-radius:8px; color:var(--accent); font-size:0.9rem; font-family:ui-monospace,monospace; cursor:pointer;"></select>
+                  <span style="color:var(--muted);">/</span>
+                  <select id="ecEndY" style="padding:6px 4px; background:var(--bg); border:1px solid var(--border2); border-radius:8px; color:var(--accent); font-size:0.9rem; font-family:ui-monospace,monospace; cursor:pointer;"></select>
+              </div>
+              <div style="display:flex; gap:4px;">
+                <button id="ecGrpDaily" onclick="setEcGroup('daily')" class="subtabbtn active" style="padding:5px 12px; font-size:0.8rem; border-radius:6px;">Daily</button>
+                <button id="ecGrpWeekly" onclick="setEcGroup('weekly')" class="subtabbtn" style="padding:5px 12px; font-size:0.8rem; border-radius:6px;">Weekly</button>
+                <button id="ecGrpMonthly" onclick="setEcGroup('monthly')" class="subtabbtn" style="padding:5px 12px; font-size:0.8rem; border-radius:6px;">Monthly</button>
+              </div>
+              <button onclick="loadEnergyChart()" style="padding:6px 18px; background:var(--accentSoft); border:1px solid var(--accent); border-radius:8px; color:var(--accent); font-weight:600; cursor:pointer; font-size:0.85rem;">Load</button>
+            </div>
+            <div class="chartWrapSmall">
+              <canvas id="energyChartCanvas"></canvas>
+            </div>
+            <div id="ecSummary" style="margin-top:10px; padding:10px 14px; background:rgba(46,229,157,0.06); border:1px solid rgba(46,229,157,0.15); border-radius:8px; display:none;">
+              <div class="small" style="color:var(--muted); line-height:1.6;">
+                <span style="color:var(--accent); font-weight:600;">Period total:</span>
+                <span class="mono" id="ecTotalKwh">—</span> kWh &nbsp;|&nbsp;
+                <span style="color:var(--warn); font-weight:600;">Cost:</span>
+                <span class="mono" id="ecTotalCost">—</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Flow Rate Card -->
+          <div class="card" style="margin-bottom:16px; border-left:3px solid var(--accent);">
+            <div style="display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:14px;">
+              <div>
+                <h4 style="margin:0; color:#fff; font-weight:700;">Flow Rate</h4>
+                <div class="small" style="color:var(--muted);">Water flow through the heating circuit</div>
+              </div>
+            </div>
+            <div style="display:flex; gap:16px; align-items:stretch; flex-wrap:wrap;">
+              <div style="flex:1; min-width:200px; background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:16px; text-align:center;">
+                <div style="color:var(--text); margin-bottom:8px; font-size:0.95rem; font-weight:600; letter-spacing:0.02em;">Flow Rate Setting</div>
+                <div style="display:flex; align-items:center; gap:10px; justify-content:center;">
+                  <input type="number" id="flowRateInput" step="0.1" min="0" max="50" value="0" 
+                    onchange="saveFlowRate(this.value)"
+                    style="width:120px; padding:10px 12px; background:var(--bg); border:1px solid var(--border2); border-radius:8px; color:var(--accent); font-size:1.4rem; font-weight:700; text-align:center; font-family:ui-monospace,monospace;">
+                  <span style="color:var(--muted); font-size:0.9rem; font-weight:500;">L/s</span>
+                  <button onclick="saveFlowRate(document.getElementById('flowRateInput').value)" style="padding:8px 20px; background:var(--accentSoft); border:1px solid var(--accent); border-radius:8px; color:var(--accent); font-weight:600; cursor:pointer; font-size:0.85rem;">Save</button>
+                </div>
+              </div>
+              <div style="flex:1; min-width:200px; background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:16px; text-align:center;">
+                <div style="color:var(--text); margin-bottom:8px; font-size:0.95rem; font-weight:600; letter-spacing:0.02em;">Live Heating Power</div>
+                <div style="display:flex; align-items:baseline; gap:6px; justify-content:center;">
+                  <span class="mono" id="energyLiveKw" style="font-size:1.4rem; font-weight:700; color:var(--text);">—</span>
+                  <span style="color:var(--muted); font-size:0.9rem;">kW</span>
+                </div>
+                <div class="small" style="color:var(--muted); margin-top:6px;">Calculated from flow rate × temperature delta</div>
+              </div>
+            </div>
+            <div style="margin-top:12px; padding:10px 14px; background:rgba(46,229,157,0.06); border:1px solid rgba(46,229,157,0.15); border-radius:8px;">
+              <div class="small" style="color:var(--muted); line-height:1.6;">
+                <span style="color:var(--accent); font-weight:600;">How it works:</span> Power (kW) = flow rate (L/s) × 4.186 × (flow temp − return temp). This is used to calculate cumulative energy (kWh) and heating costs on the dashboard.
+              </div>
+            </div>
+          </div>
+
+          <!-- Energy Rate Card -->
+          <div class="card" style="border-left:3px solid var(--warn);">
+            <div style="display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:14px;">
+              <div>
+                <h4 style="margin:0; color:#fff; font-weight:700;">Energy Rate</h4>
+                <div class="small" style="color:var(--muted);">Cost per unit of energy for heating cost calculations</div>
+              </div>
+            </div>
+            <div style="display:flex; gap:16px; align-items:stretch; flex-wrap:wrap;">
+              <div style="flex:1; min-width:200px; background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:16px; text-align:center;">
+                <div style="color:var(--text); margin-bottom:8px; font-size:0.95rem; font-weight:600; letter-spacing:0.02em;">Rate</div>
+                <div style="display:flex; align-items:center; gap:10px; justify-content:center;">
+                  <input type="number" id="rateInput" step="0.01" min="0" value="0"
+                    style="width:120px; padding:10px 12px; background:var(--bg); border:1px solid var(--border2); border-radius:8px; color:var(--warn); font-size:1.4rem; font-weight:700; text-align:center; font-family:ui-monospace,monospace;">
+                  <span style="color:var(--muted); font-size:0.9rem; font-weight:500;">p/kWh</span>
+                </div>
+                <button onclick="saveRate()" style="margin-top:12px; padding:8px 24px; background:var(--accentSoft); border:1px solid var(--accent); border-radius:8px; color:var(--accent); font-weight:600; cursor:pointer;">Save Rate</button>
+              </div>
+              <div style="flex:1; min-width:200px; background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:16px; text-align:center;">
+                <div style="color:var(--text); margin-bottom:8px; font-size:0.95rem; font-weight:600; letter-spacing:0.02em;">Current Active Rate</div>
+                <div style="display:flex; align-items:baseline; gap:6px; justify-content:center;">
+                  <span class="mono" id="rateNowAdv" style="font-size:1.4rem; font-weight:700; color:var(--warn);">—</span>
+                </div>
+                <div class="small" style="color:var(--muted); margin-top:10px;">Season window: <span class="mono" id="seasonWindowAdv">—</span></div>
+              </div>
+            </div>
+            <div style="margin-top:12px; padding:10px 14px; background:rgba(255,209,102,0.06); border:1px solid rgba(255,209,102,0.15); border-radius:8px;">
+              <div class="small" style="color:var(--muted); line-height:1.6;">
+                <span style="color:var(--warn); font-weight:600;">Dashboard impact:</span> Season-to-date heating cost = total kWh × rate. The cost and kWh totals are displayed on the dashboard. Changing the rate here updates the calculation immediately.
+              </div>
+            </div>
+          </div>
+
+          <!-- Season Window Card -->
+          <div class="card" style="margin-bottom:16px; border-left:3px solid #6c8cff;">
+            <div style="display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:14px;">
+              <div>
+                <h4 style="margin:0; color:#fff; font-weight:700;">Season Window</h4>
+                <div class="small" style="color:var(--muted);">Defines the heating season for energy cost tracking</div>
+              </div>
+            </div>
+            <div style="display:flex; gap:16px; justify-content:center; flex-wrap:wrap;">
+              <div style="flex:0 1 260px; background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:16px; text-align:center;">
+                <div style="color:var(--text); margin-bottom:8px; font-size:0.95rem; font-weight:600; letter-spacing:0.02em;">Season Start</div>
+                <div style="display:flex; align-items:center; gap:4px; justify-content:center;">
+                    <select id="seasonStartD" style="padding:10px 6px; background:var(--bg); border:1px solid var(--border2); border-radius:8px; color:#6c8cff; font-size:1.1rem; font-weight:600; font-family:ui-monospace,monospace; cursor:pointer;"></select>
+                    <span style="color:var(--muted);">/</span>
+                    <select id="seasonStartM" style="padding:10px 6px; background:var(--bg); border:1px solid var(--border2); border-radius:8px; color:#6c8cff; font-size:1.1rem; font-weight:600; font-family:ui-monospace,monospace; cursor:pointer;"></select>
+                    <span style="color:var(--muted);">/</span>
+                    <select id="seasonStartY" style="padding:10px 6px; background:var(--bg); border:1px solid var(--border2); border-radius:8px; color:#6c8cff; font-size:1.1rem; font-weight:600; font-family:ui-monospace,monospace; cursor:pointer;"></select>
+                </div>
+              </div>
+              <div style="flex:0 1 260px; background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:16px; text-align:center;">
+                <div style="color:var(--text); margin-bottom:8px; font-size:0.95rem; font-weight:600; letter-spacing:0.02em;">Season End</div>
+                <div style="display:flex; align-items:center; gap:4px; justify-content:center;">
+                    <select id="seasonEndD" style="padding:10px 6px; background:var(--bg); border:1px solid var(--border2); border-radius:8px; color:#6c8cff; font-size:1.1rem; font-weight:600; font-family:ui-monospace,monospace; cursor:pointer;"></select>
+                    <span style="color:var(--muted);">/</span>
+                    <select id="seasonEndM" style="padding:10px 6px; background:var(--bg); border:1px solid var(--border2); border-radius:8px; color:#6c8cff; font-size:1.1rem; font-weight:600; font-family:ui-monospace,monospace; cursor:pointer;"></select>
+                    <span style="color:var(--muted);">/</span>
+                    <select id="seasonEndY" style="padding:10px 6px; background:var(--bg); border:1px solid var(--border2); border-radius:8px; color:#6c8cff; font-size:1.1rem; font-weight:600; font-family:ui-monospace,monospace; cursor:pointer;"></select>
+                </div>
+              </div>
+            </div>
+            <div style="text-align:center; margin-top:14px;">
+              <button onclick="saveSeasonWindow()" style="padding:10px 28px; background:rgba(108,140,255,0.12); border:1px solid #6c8cff; border-radius:8px; color:#6c8cff; font-weight:600; cursor:pointer; font-size:0.9rem;">Save Season</button>
+            </div>
+            <div style="margin-top:12px; padding:10px 14px; background:rgba(108,140,255,0.06); border:1px solid rgba(108,140,255,0.15); border-radius:8px;">
+              <div class="small" style="color:var(--muted); line-height:1.6;">
+                <span style="color:#6c8cff; font-weight:600;">Note:</span> Season-to-date kWh and costs on the dashboard are calculated between these dates. Default is 1 July to 30 June.
+              </div>
+            </div>
+          </div>
+
+    </div>
+
     <div class="panel" id="panelAdvanced" style="display:none;">
       <div class="subtabs" style="margin-bottom:14px;">
         <button class="subtabbtn active" id="subPLCMonitor" onclick="showAdvancedSub('plc')">PLC Monitor</button>
@@ -6296,7 +6662,7 @@ document.addEventListener("DOMContentLoaded", function() {
           <div style="background:linear-gradient(135deg,#ff6b6b22,#ff8e5322); border:2px solid #ff6b6b; border-radius:10px; padding:15px; margin-bottom:20px;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
               <div>
-                <div style="color:#ff6b6b; font-weight:900; font-size:14px;">⚠️ MANUAL OVERRIDE MODE</div>
+                <div style="color:#ff6b6b; font-weight:900; font-size:14px;">MANUAL OVERRIDE MODE</div>
                 <div style="color:#9fb0d7; font-size:11px;">When enabled, automatic control is suspended</div>
               </div>
               <label class="toggle-switch">
@@ -6985,8 +7351,8 @@ document.addEventListener("DOMContentLoaded", function() {
               
               <div class="settings-row">
                 <div class="settings-label">
-                  <span class="settings-label-text">Frost Threshold</span>
-                  <span class="settings-label-hint">Heating activates when forecast minimum falls below this</span>
+                  <span class="settings-label-text">Frost Risk Threshold</span>
+                  <span class="settings-label-hint">Defines what counts as a frost risk — heating activates when forecast minimum falls below this</span>
                 </div>
                 <div class="settings-input">
                   <input type="number" id="frostThreshold" value="2" min="-10" max="10" step="0.5" onchange="saveFrostSettings()">
@@ -7073,7 +7439,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 <div class="settings-card-dot"></div>
                 <h4 class="settings-card-title">SmartPitch Mode</h4>
               </div>
-              <p class="settings-card-desc">AI-driven heating with slope-based safety net and learning optimization</p>
+              <p class="settings-card-desc">Learning-driven heating with slope-based safety net and learning optimization</p>
               
               <!-- SmartPitch Sub-tabs -->
               <div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;">
@@ -7081,6 +7447,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 <button class="subtabbtn" id="spSubHeatCurve" onclick="showSpTab('heatcurve')">Heat Curve</button>
                 <button class="subtabbtn" id="spSubTiming" onclick="showSpTab('timing')">Timing</button>
                 <button class="subtabbtn" id="spSubSoiltemp" onclick="showSpTab('soiltemp')">Soil Temp</button>
+  <button class="subtabbtn" id="spSubMaintain" onclick="showSpTab('maintain')">Maintain</button>
               </div>
               
               <!-- Safety Net Sub-tab -->
@@ -7291,11 +7658,49 @@ document.addEventListener("DOMContentLoaded", function() {
                 </div>
               </div><!-- End Soil Temp Sub-tab -->
               
+              <!-- Maintain sub-tab -->
+              <div id="spTabMaintain" style="display:none">
+                <p style="color:var(--muted);font-size:0.85rem;margin-bottom:14px;">Smart maintain heating between consecutive sessions. Instead of blindly holding a fixed temperature, the system reads the soil probe and decides the most energy-efficient action:</p><div style="background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:0.82rem;color:var(--muted);line-height:1.6;"><div style="margin-bottom:6px;color:var(--text);font-weight:600;">Decision priority (top to bottom):</div><div style="display:flex;align-items:start;gap:8px;margin-bottom:4px;"><span style="color:var(--accent);font-weight:700;min-width:18px;">1.</span><span><b style="color:var(--text);">Skip to ramp-up</b> — If already within the learning lead time for the next session, jump straight to HEATING at the learned target temp. No point maintaining at 14°C when you need 18°C in 3 hours.</span></div><div style="display:flex;align-items:start;gap:8px;margin-bottom:4px;"><span style="color:var(--accent);font-weight:700;min-width:18px;">2.</span><span><b style="color:var(--text);">Soil safe — skip</b> — If soil is well above safe threshold (+2°C), the pitch isn’t at risk. System monitors without heating.</span></div><div style="display:flex;align-items:start;gap:8px;margin-bottom:4px;"><span style="color:var(--accent);font-weight:700;min-width:18px;">3.</span><span><b style="color:var(--text);">Soil OK — reduced</b> — If soil is above safe but not by much, maintain at a reduced temp (target − 2°C) to save energy while keeping a buffer.</span></div><div style="display:flex;align-items:start;gap:8px;margin-bottom:4px;"><span style="color:var(--accent);font-weight:700;min-width:18px;">4.</span><span><b style="color:var(--text);">Soil cold — full maintain</b> — If soil is at or below safe threshold, maintain at the full configured temperature.</span></div><div style="display:flex;align-items:start;gap:8px;"><span style="color:var(--accent);font-weight:700;min-width:18px;">5.</span><span><b style="color:var(--text);">Beyond window</b> — If the next session is further away than the maintain window, stop maintaining. The system will restart based on learning data.</span></div></div>
+                <div class="settings-row">
+                  <div class="settings-label">
+                    <span>Maintain Temperature</span>
+                    <span class="settings-label-hint">Target flow temp between sessions</span>
+                  </div>
+                  <div class="settings-input">
+                    <input type="number" id="maintainTemp" value="14" min="8" max="25" step="0.5" onchange="saveSmartPitchSettings()">
+                    <span class="settings-input-unit">°C</span>
+                  </div>
+                </div>
+                <div class="settings-row">
+                  <div class="settings-label">
+                    <span>Maintain Window</span>
+                    <span class="settings-label-hint">How far ahead to look for next session</span>
+                  </div>
+                  <div class="settings-input">
+                    <input type="number" id="maintainWindowHours" value="48" min="6" max="120" step="1" onchange="saveSmartPitchSettings()">
+                    <span class="settings-input-unit">hours</span>
+                  </div>
+                </div>
+                <div class="settings-row">
+                  <div class="settings-label">
+                    <span>Soil Safe Threshold</span>
+                    <span class="settings-label-hint">Below this, soil is at frost risk (soil &gt; safe+2°C = skip maintain)</span>
+                  </div>
+                  <div class="settings-input">
+                    <input type="number" id="maintainSoilSafe" value="4.0" min="0" max="10" step="0.5" onchange="saveSmartPitchSettings()">
+                    <span class="settings-input-unit">°C</span>
+                  </div>
+                </div>
+              </div><!-- End Maintain Sub-tab -->
+              
             </div>
             
           </div>
         </div>
-      </div>
+
+      </div><!-- End advancedSubSettings -->
+
+
     </div>
 
   </div>
@@ -7334,7 +7739,7 @@ document.addEventListener("DOMContentLoaded", function() {
   
   function startPLCRefresh() {
     if(!plcInterval) {
-      plcInterval = setInterval(updatePLCDisplay, 60000);
+      plcInterval = setInterval(updatePLCDisplay, 2000);
     }
   }
   
@@ -7488,7 +7893,7 @@ document.addEventListener("DOMContentLoaded", function() {
         bpStatus.textContent = bpActive ? 'ACTIVE' : 'INACTIVE';
         bpStatus.style.color = bpActive ? '#ff9f43' : 'var(--muted)';
       }
-    }).catch(e => console.error('PLC display error:', e));
+\n    }).catch(e => console.error('PLC display error:', e));
   }
 
   
@@ -7594,7 +7999,7 @@ document.addEventListener("DOMContentLoaded", function() {
   
   function startSchematicRefresh() {
     if(!schematicInterval) {
-      schematicInterval = setInterval(updateSchematic, 60000);
+      schematicInterval = setInterval(updateSchematic, 2000);
     }
   }
   
@@ -7618,7 +8023,7 @@ document.addEventListener("DOMContentLoaded", function() {
       if(card)card.classList.add('smartpitch-active');
       if(bg)bg.classList.add('active');
       if(spBtn)spBtn.classList.add('selected');
-      if(title)title.textContent='SmartPitch AI Active';
+      if(title)title.textContent='SmartPitch Active';
       if(subtitle)subtitle.textContent='Intelligent frost protection enabled';
       
       // Initialize visual effects for SmartPitch mode
@@ -7807,7 +8212,7 @@ function showHeatingSub(sub) {
     } catch(e) {}
   }
   
-  function startFrostStatusRefresh() { if(frostStatusInterval) return; updateFrostStatus(); loadFrostDetect(); frostStatusInterval = setInterval(updateFrostStatus, 60000); }
+  function startFrostStatusRefresh() { if(frostStatusInterval) return; updateFrostStatus(); loadFrostDetect(); frostStatusInterval = setInterval(updateFrostStatus, 2000); }
   function stopFrostStatusRefresh() { if(frostStatusInterval) { clearInterval(frostStatusInterval); frostStatusInterval = null; } }
   
   let roiDragging=false, roiResizing=false, roiCorner=null, roiStartX, roiStartY, roiStartLeft, roiStartTop, roiStartW, roiStartH;
@@ -8036,7 +8441,7 @@ function showHeatingSub(sub) {
     
     // Extra safety: ensure img is still inside frostCamFeed
     if (img && feed && img.parentElement === feed) {
-      fetch('/api/camera/snapshot?t=' + Date.now()).then(r => r.blob()).then(b => { img.src = URL.createObjectURL(b); }).catch(() => {});
+      img.src = '/api/camera/snapshot?t=' + Date.now();
     }
     
     if (frostCamActive) {
@@ -8120,7 +8525,7 @@ function showHeatingSub(sub) {
 
 
   function showTab(name){
-    const tabs = ["Dashboard","Forecast","Schedule","Heating","Data","Advanced"];
+    const tabs = ["Dashboard","Forecast","Schedule","Heating","Data","Energy","Advanced"];
     tabs.forEach(t=>{
       const p = document.getElementById("panel"+t);
       const b = document.getElementById("tab"+t);
@@ -8138,6 +8543,13 @@ function showHeatingSub(sub) {
     // Initialize Data tab content when shown
     if(name === "Data") {
       showDataSub(dataSub || 'trend');
+    }
+
+    // Initialize Energy tab content when shown
+    if(name === "Energy") {
+      loadFlowRate();
+      loadCost();
+      loadEnergyChart();
     }
   }
 
@@ -8509,7 +8921,7 @@ function showHeatingSub(sub) {
     const desc =
       buildingProtectActive ? "Actuator closed - protecting building heating system." :
       mode === "STANDARD" ? "Fixed strategy (no learning). Use for baseline stability." :
-      mode === "SMARTPITCH" ? "AI-driven optimisation using learned performance bands." :
+      mode === "SMARTPITCH" ? "Intelligent optimisation using learned performance bands." :
       "—";
     setText("modeDesc", desc);
   }
@@ -8709,8 +9121,8 @@ function showHeatingSub(sub) {
         statusBg = 'rgba(255,107,74,0.15)';
         const nextDay = fmtDay(nt.playable_by_ts);
         plan = 'Frost risk for ' + nt.session_name + ' on ' + nextDay + ' (forecast min ' + immediateFrost.min_temp_c.toFixed(1) + '\u00B0C). ';
-        if (lmiMatch.avg_pass_lead_hours) {
-          const leadH = Math.round(lmiMatch.avg_pass_lead_hours);
+        if (lmiMatch.adjusted_lead_hours || lmiMatch.avg_pass_lead_hours) {
+          const leadH = Math.round(lmiMatch.adjusted_lead_hours || lmiMatch.avg_pass_lead_hours);
           const startDate = new Date(new Date(nt.playable_by_ts).getTime() - leadH * 3600000);
           const startDay = fmtDay(startDate.toISOString());
           const startTime = fmtHour(startDate.toISOString());
@@ -8745,8 +9157,8 @@ function showHeatingSub(sub) {
 
         // Show the plan for the worst frost session
         const worstFrost = frostSessions.reduce((w, s) => (!w || s.min_temp_c < w.min_temp_c) ? s : w, null);
-        if (worstFrost && lmiMatch.avg_pass_lead_hours) {
-          const leadH = Math.round(lmiMatch.avg_pass_lead_hours);
+        if (worstFrost && (lmiMatch.adjusted_worst_lead_hours || lmiMatch.avg_pass_lead_hours)) {
+          const leadH = Math.round(lmiMatch.adjusted_worst_lead_hours || lmiMatch.avg_pass_lead_hours);
           const deadlineMs = new Date(worstFrost.playable_by).getTime();
           const startDate = new Date(deadlineMs - leadH * 3600000);
           const startDay = fmtDay(startDate.toISOString());
@@ -8838,7 +9250,7 @@ function showHeatingSub(sub) {
       const currentMode = mode.mode || 'OFF';
       
       if (currentMode !== 'SMARTPITCH') {
-        planText = 'SmartPitch AI is currently turned off. The system is in ' + currentMode + ' mode. Switch to SmartPitch mode to enable intelligent heating control.';
+        planText = 'SmartPitch is currently turned off. The system is in ' + currentMode + ' mode. Switch to SmartPitch mode to enable intelligent heating control.';
       } else {
         if (submode === 'MONITOR') {
           // Check if there's a frost risk from forecast data
@@ -9088,15 +9500,49 @@ function showHeatingSub(sub) {
     setText("seasonKwh", s.kwh ?? "—");
     setText("seasonCost", (s.cost_gbp!=null ? ("£" + Number(s.cost_gbp).toFixed(2)) : "—"));
     setText("rateNow", (cr.pence_per_kwh!=null ? (Number(cr.pence_per_kwh).toFixed(2) + " p/kWh") : "—"));
+    setText("rateNowAdv", (cr.pence_per_kwh!=null ? (Number(cr.pence_per_kwh).toFixed(2) + " p/kWh") : "—"));
 
     const start = season.start ? fmtDateShort(season.start) : "—";
     const end = season.end ? fmtDateShort(season.end) : "—";
     setText("seasonWindow", start + " → " + end);
+    setText("seasonWindowAdv", start + " → " + end);
 
     const inp = document.getElementById("rateInput");
     if (inp && cr.pence_per_kwh!=null && !inp.dataset.touched) {
       inp.value = Number(cr.pence_per_kwh).toFixed(2);
     }
+  }
+
+  
+  async function saveSeasonWindow() {
+    const startVal = getDMY('seasonStart');
+    const endVal = getDMY('seasonEnd');
+    if (!startVal || !endVal) return;
+    
+    try {
+      await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: 'season', value: { start: startVal, end: endVal } })
+      });
+      // Refresh cost display with new season
+      await loadCost();
+      showToast('Season window saved');
+    } catch (e) {
+      console.log('Failed to save season:', e);
+    }
+  }
+
+  async function loadSeasonWindow() {
+    try {
+      const res = await fetch('/api/settings/season');
+      if (res.ok) {
+        const data = await res.json();
+        const val = data.value || data;
+        if (val.start) setDMY('seasonStart', val.start);
+        if (val.end) setDMY('seasonEnd', val.end);
+      }
+    } catch (e) {}
   }
 
   async function saveRate(){
@@ -9304,6 +9750,17 @@ function showHeatingSub(sub) {
   // ===== Data tab (DB tables) =====
   let dataSub = "trend"; // "trend" | "smart"
   let dataPage = 1;
+
+  function showLearningSub(which) {
+    const panels = ['live', 'how', 'bands', 'history'];
+    panels.forEach(p => {
+      const panel = document.getElementById('lrnPanel' + p.charAt(0).toUpperCase() + p.slice(1));
+      const btn = document.getElementById('lrnSub' + p.charAt(0).toUpperCase() + p.slice(1));
+      if (panel) panel.style.display = (p === which) ? 'block' : 'none';
+      if (btn) btn.classList.toggle('active', p === which);
+    });
+    if (which === 'history') loadLearningData();
+  }
 
   function showDataSub(which){
     dataSub = which;
@@ -9528,7 +9985,12 @@ function showHeatingSub(sub) {
     const mm = String(d.getMonth()+1).padStart(2,'0');
     const hh = String(d.getHours()).padStart(2,'0');
     const mi = String(d.getMinutes()).padStart(2,'0');
-    setText("serverTime", dd + "/" + mm + " " + hh + ":" + mi);
+    const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const clockTimeEl = document.getElementById('clockTime');
+    const clockDateEl = document.getElementById('clockDate');
+    if (clockTimeEl) clockTimeEl.textContent = hh + ':' + mi;
+    if (clockDateEl) clockDateEl.textContent = dayNames[d.getDay()] + ' ' + dd + ' ' + monthNames[d.getMonth()];
   }
   tickClock();
   setInterval(tickClock, 1000);
@@ -9910,6 +10372,9 @@ function showHeatingSub(sub) {
     const input = document.getElementById('flowRateInput');
     if (input && flowRate > 0) input.value = flowRate;
     
+    // Trigger energy display update with loaded value
+    updateEnergyDisplay();
+    
     return flowRate;
   }
   
@@ -9936,14 +10401,17 @@ function showHeatingSub(sub) {
       const heatEnabled = t.heat_enabled === true;
       
       const el = document.getElementById('liveKw');
+      const elAdv = document.getElementById('energyLiveKw');
       const costEl = document.getElementById('liveCostHr');
       
       // Only show power when heating is actually enabled
       if (!heatEnabled) {
         if (el) el.textContent = '0.0 kW';
+        if (elAdv) elAdv.textContent = '0.0 kW';
         if (costEl) costEl.textContent = '£0.00/hr';
       } else if (flowRate <= 0) {
         if (el) el.textContent = 'Set flow rate';
+        if (elAdv) elAdv.textContent = 'Set flow rate';
         if (costEl) costEl.textContent = '—';
       } else {
         const secFlow = t.sec_flow_c;
@@ -9953,12 +10421,14 @@ function showHeatingSub(sub) {
         if (el) {
           if (powerKw !== null && powerKw > 0) {
             el.textContent = powerKw.toFixed(1) + ' kW';
+        if (elAdv) elAdv.textContent = powerKw.toFixed(1) + ' kW';
             if (costEl && rate > 0) {
               const costPerHour = (powerKw * rate) / 100;
               costEl.textContent = '£' + costPerHour.toFixed(2) + '/hr';
             }
           } else {
             el.textContent = '0 kW';
+            if (elAdv) elAdv.textContent = '0.0';
             if (costEl) costEl.textContent = '£0.00/hr';
           }
         }
@@ -10084,12 +10554,15 @@ function showHeatingSub(sub) {
             h += '<div style="display:flex; gap:20px; flex-wrap:wrap;">';
             h += '<div><span class="small" style="color:var(--muted);">Sessions:</span> <span class="mono">' + (m.total_sessions || 0) + '</span></div>';
             h += '<div><span class="small" style="color:var(--muted);">Pass/Fail:</span> <span class="mono">' + (m.passes || 0) + '/' + (m.fails || 0) + '</span></div>';
-            h += '<div><span class="small" style="color:var(--muted);">Pass Rate:</span> <span class="mono" style="color:' + (parseFloat(m.pass_rate) >= 70 ? '#2ee59d' : '#d9534f') + ';">' + (m.pass_rate != null ? parseFloat(m.pass_rate).toFixed(0) + '%' : '\u2014') + '</span></div>';
+            h += '<div><span class="small" style="color:var(--muted);">Pass Rate:</span> <span class="mono" style="color:' + (((tier === 'TIER4_1BAND' || tier === 'TIER5_GLOBAL') ? '#ffd166' : (parseFloat(m.pass_rate) >= 70 ? '#2ee59d' : '#d9534f'))) + ';">' + (m.pass_rate != null ? parseFloat(m.pass_rate).toFixed(0) + '%' : '\u2014') + '</span></div>';
             if (m.avg_pass_lead_hours != null) h += '<div><span class="small" style="color:var(--muted);">Avg Lead:</span> <span class="mono">' + parseFloat(m.avg_pass_lead_hours).toFixed(1) + 'h</span></div>';
             if (m.avg_pass_wish_temp != null) h += '<div><span class="small" style="color:var(--muted);">Avg Wish:</span> <span class="mono">' + parseFloat(m.avg_pass_wish_temp).toFixed(1) + '\u00b0C</span></div>';
             if (m.avg_pass_energy_kwh != null) h += '<div><span class="small" style="color:var(--muted);">Avg Energy:</span> <span class="mono">' + parseFloat(m.avg_pass_energy_kwh).toFixed(0) + 'kWh</span></div>';
             h += '</div>';
 
+            if (tier === 'TIER4_1BAND' || tier === 'TIER5_GLOBAL') {
+              h += '<div class="small" style="color:#f08060; margin-top:6px; margin-bottom:6px;">⚠ Low specificity — pass rate based on broad match, actual conditions may differ. Setpoint blended with heat curve.</div>';
+            }
             if (m.temp_band) {
               h += '<div class="small" style="color:var(--muted); margin-top:6px;">Matched bands: ' + m.temp_band + ' / ' + m.cloud_band;
               if (m.humidity_band) h += ' / ' + m.humidity_band;
@@ -10109,9 +10582,77 @@ function showHeatingSub(sub) {
           setText('fmWindBand', '\u2014');
           document.getElementById('fmMatchResult').innerHTML = '<span class="mono small" style="color:var(--muted);">No forecast data \u2014 no training session scheduled</span>';
         }
-      } catch (fmErr) {
-        console.error('Failed to load forecast match:', fmErr);
-      }
+      // Populate Active Recommendation panel
+          const recDiv = document.getElementById('lrnActiveRec');
+          if (recDiv && guiData.learning) {
+            const lrn = guiData.learning;
+            const fm2 = lrn.forecast_match || {};
+            const m2 = fm2.match || null;
+            let recHtml = '';
+            
+            // Show mode-aware banner
+            const currentMode = (guiData.mode && guiData.mode.mode) || '';
+            if (currentMode !== 'SMARTPITCH') {
+              recHtml += '<div style="background:rgba(122,167,255,0.1);border:1px solid rgba(122,167,255,0.3);border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:0.82rem;color:var(--muted);">';
+              recHtml += '<span style="color:#7aa7ff;font-weight:600;">Info only</span> \u2014 Currently in ' + currentMode + ' mode. This shows what SmartPitch would recommend if active.';
+              recHtml += '</div>';
+            }
+            
+            if (m2) {
+              const tier = m2.match_tier || 'TIER1_EXACT';
+              const tierColors = {'TIER1_EXACT':'#2ee59d','TIER2_3BAND':'#7aa7ff','TIER3_2BAND':'#ffd166','TIER4_1BAND':'#f08060','TIER5_GLOBAL':'#888'};
+              const tierNames = {'TIER1_EXACT':'Exact Match','TIER2_3BAND':'3-Band','TIER3_2BAND':'2-Band','TIER4_1BAND':'Temp Only','TIER5_GLOBAL':'Global Avg'};
+              const blended = (tier === 'TIER4_1BAND' || tier === 'TIER5_GLOBAL');
+              
+              recHtml += '<div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:10px;">';
+              recHtml += '<div style="background:var(--panel2);border:1px solid ' + (tierColors[tier] || '#888') + ';border-radius:8px;padding:8px 14px;text-align:center;min-width:100px;">';
+              recHtml += '<div class="small" style="color:var(--muted);margin-bottom:2px;">Match Tier</div>';
+              recHtml += '<div class="mono" style="color:' + (tierColors[tier] || '#888') + ';font-weight:700;">' + tier + '</div>';
+              recHtml += '<div class="small" style="color:var(--muted);">' + (tierNames[tier] || '') + '</div>';
+              recHtml += '</div>';
+              
+              if (m2.total_sessions) {
+                recHtml += '<div style="background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:8px 14px;text-align:center;min-width:80px;">';
+                recHtml += '<div class="small" style="color:var(--muted);margin-bottom:2px;">Sessions</div>';
+                recHtml += '<div class="mono" style="color:var(--text);font-size:1.1rem;">' + m2.total_sessions + '</div>';
+                recHtml += '<div class="small" style="color:var(--muted);">' + (m2.passes||0) + ' pass / ' + (m2.fails||0) + ' fail</div>';
+                recHtml += '</div>';
+              }
+              if (m2.pass_rate != null) {
+                const pr = parseFloat(m2.pass_rate);
+                recHtml += '<div style="background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:8px 14px;text-align:center;min-width:80px;">';
+                recHtml += '<div class="small" style="color:var(--muted);margin-bottom:2px;">Pass Rate</div>';
+                recHtml += '<div class="mono" style="color:' + ((tier === 'TIER4_1BAND' || tier === 'TIER5_GLOBAL') ? '#ffd166' : (pr >= 70 ? '#2ee59d' : '#f08060')) + ';font-size:1.1rem;">' + pr.toFixed(0) + '%</div>';
+                recHtml += '</div>';
+              }
+              if (m2.adjusted_lead_hours != null || m2.avg_pass_lead_hours != null) {
+                const lead = m2.adjusted_lead_hours || m2.avg_pass_lead_hours;
+                recHtml += '<div style="background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:8px 14px;text-align:center;min-width:80px;">';
+                recHtml += '<div class="small" style="color:var(--muted);margin-bottom:2px;">Lead Time</div>';
+                recHtml += '<div class="mono" style="color:var(--text);font-size:1.1rem;">' + parseFloat(lead).toFixed(1) + 'h</div>';
+                recHtml += '</div>';
+              }
+              if (m2.avg_pass_energy_kwh != null) {
+                recHtml += '<div style="background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:8px 14px;text-align:center;min-width:80px;">';
+                recHtml += '<div class="small" style="color:var(--muted);margin-bottom:2px;">Avg Energy</div>';
+                recHtml += '<div class="mono" style="color:var(--text);font-size:1.1rem;">' + parseFloat(m2.avg_pass_energy_kwh).toFixed(0) + 'kWh</div>';
+                recHtml += '</div>';
+              }
+              recHtml += '</div>';
+              
+              if (blended) {
+                recHtml += '<div style="background:rgba(240,128,96,0.1);border:1px solid rgba(240,128,96,0.3);border-radius:8px;padding:8px 12px;font-size:0.82rem;color:var(--muted);">';
+                recHtml += '<span style="color:#f08060;font-weight:600;">Heat curve blended</span> \u2014 ' + (tierNames[tier]||'') + ' match has low weather specificity, so the setpoint is averaged with the heat curve for safety.';
+                recHtml += '</div>';
+              }
+            } else {
+              recHtml = '<div style="color:var(--muted);font-size:0.85rem;">No learning match available. The system will use the heat curve with soil-deficit adjustment.</div>';
+            }
+            recDiv.innerHTML = recHtml;
+          }
+        } catch (fmErr) {
+          console.error('Failed to load forecast match:', fmErr);
+        }
       
     } catch (e) {
       console.error('Failed to load learning data:', e);
@@ -10123,16 +10664,17 @@ function showHeatingSub(sub) {
     loadManualState();
     loadPIDParams();
     loadFlowRate();
+    loadSeasonWindow();
     loadForecastSettings();
     updatePLCDisplay();
-    setInterval(updatePLCDisplay, 60000);
+    setInterval(updatePLCDisplay, 5000);
     try{
       await safeRefresh();
       await loadScheduleMonth();
     }catch(e){
       console.log("boot error:", e);
     }
-    setInterval(safeRefresh, 300000);
+    setInterval(safeRefresh, 10000);
   })();
 
   // Manual Control Functions
@@ -10516,7 +11058,7 @@ function showHeatingSub(sub) {
 
   // SmartPitch sub-tab navigation
   function showSpTab(tab) {
-    const tabs = ['safetynet', 'heatcurve', 'timing', 'soiltemp'];
+    const tabs = ['safetynet', 'heatcurve', 'timing', 'soiltemp', 'maintain'];
     tabs.forEach(t => {
       const panel = document.getElementById('spTab' + t.charAt(0).toUpperCase() + t.slice(1).replace('net', 'Net').replace('curve', 'Curve'));
       const btn = document.getElementById('spSub' + t.charAt(0).toUpperCase() + t.slice(1).replace('net', 'Net').replace('curve', 'Curve'));
@@ -10548,6 +11090,11 @@ function saveSmartPitchSettings() {
     const soilDeficitFlowFactor = document.getElementById('soilDeficitFlowFactor')?.value || 1.0;
     const soilDeficitLeadFactor = document.getElementById('soilDeficitLeadFactor')?.value || 0.5;
     
+    // Maintain settings
+    const maintainTemp = document.getElementById('maintainTemp')?.value || 14;
+    const maintainWindowHours = document.getElementById('maintainWindowHours')?.value || 48;
+    const maintainSoilSafe = document.getElementById('maintainSoilSafe')?.value || 4.0;
+    
     fetch('/api/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -10567,7 +11114,10 @@ function saveSmartPitchSettings() {
           soil_lead_factor: parseFloat(soilLeadFactor),
           soil_deficit_threshold: parseFloat(soilDeficitThreshold),
           soil_deficit_flow_factor: parseFloat(soilDeficitFlowFactor),
-          soil_deficit_lead_factor: parseFloat(soilDeficitLeadFactor)
+          soil_deficit_lead_factor: parseFloat(soilDeficitLeadFactor),
+          maintain_temp: parseFloat(maintainTemp),
+          maintain_window_hours: parseFloat(maintainWindowHours),
+          maintain_soil_safe_c: parseFloat(maintainSoilSafe)
         }
       })
     }).then(r => r.json()).then(data => {
@@ -10646,6 +11196,20 @@ function saveSmartPitchSettings() {
       if (data.soil_deficit_lead_factor !== undefined) {
         const el = document.getElementById('soilDeficitLeadFactor');
         if (el) el.value = data.soil_deficit_lead_factor;
+      }
+      
+      // Maintain settings
+      if (data.maintain_temp !== undefined) {
+        const el = document.getElementById('maintainTemp');
+        if (el) el.value = data.maintain_temp;
+      }
+      if (data.maintain_window_hours !== undefined) {
+        const el = document.getElementById('maintainWindowHours');
+        if (el) el.value = data.maintain_window_hours;
+      }
+      if (data.maintain_soil_safe_c !== undefined) {
+        const el = document.getElementById('maintainSoilSafe');
+        if (el) el.value = data.maintain_soil_safe_c;
       }
     }).catch(e => console.error('Load SmartPitch settings error:', e));
   }
@@ -11188,8 +11752,320 @@ function saveSmartPitchSettings() {
   }
 
 
-  // Auto-refresh disabled in demo mode
+\n\n
+  // Auto-refresh page every 4 hours to prevent memory buildup
+  setTimeout(function() {
+    console.log('Auto-refreshing page to clear memory...');
+    location.reload();
+  }, 4 * 60 * 60 * 1000);
+
+  let energyChart = null;
+  let ecGroup = 'daily';
+
+  function setEcGroup(g) {
+    ecGroup = g;
+    ['Daily','Weekly','Monthly'].forEach(label => {
+      const btn = document.getElementById('ecGrp' + label);
+      if (btn) btn.classList.toggle('active', label.toLowerCase() === g);
+    });
+    loadEnergyChart();
+  }
+
+  async function loadEnergyChart() {
+    // Ensure dropdowns have sensible defaults
+    const now = new Date();
+    const todayISO = now.toISOString().slice(0,10);
+    const thirtyAgoISO = new Date(now.getTime() - 30*86400000).toISOString().slice(0,10);
+    const curStart = getDMY('ecStart');
+    const curEnd = getDMY('ecEnd');
+    if (!document.getElementById('ecStartY')?.options.length) initDateDropdowns();
+    if (curEnd < curStart) { setDMY('ecStart', thirtyAgoISO); setDMY('ecEnd', todayISO); }
+
+    try {
+      const url = '/api/energy/chart?start=' + getDMY('ecStart') + '&end=' + getDMY('ecEnd') + '&group=' + ecGroup;
+      const resp = await fetch(url, { cache: 'no-store' });
+      const data = await resp.json();
+      if (!Array.isArray(data)) return;
+
+      const labels = data.map(r => r.period);
+      const kwh = data.map(r => parseFloat(r.kwh) || 0);
+      const cost = data.map(r => parseFloat(r.cost_gbp) || 0);
+
+      // Summary
+      const totalKwh = kwh.reduce((a,b) => a+b, 0);
+      const totalCost = cost.reduce((a,b) => a+b, 0);
+      const sumEl = document.getElementById('ecSummary');
+      if (sumEl) sumEl.style.display = 'block';
+      setText('ecTotalKwh', totalKwh.toFixed(1));
+      setText('ecTotalCost', '\u00a3' + totalCost.toFixed(2));
+
+      const ctx = document.getElementById('energyChartCanvas');
+      if (!ctx) return;
+
+      if (energyChart) {
+        energyChart.data.labels = labels;
+        energyChart.data.datasets[0].data = kwh;
+        energyChart.data.datasets[1].data = cost;
+        energyChart.update();
+      } else {
+        energyChart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: 'kWh',
+                data: kwh,
+                backgroundColor: 'rgba(46,229,157,0.6)',
+                borderColor: '#2ee59d',
+                borderWidth: 1,
+                borderRadius: 3,
+                yAxisID: 'y',
+                order: 2
+              },
+              {
+                label: 'Cost (\u00a3)',
+                data: cost,
+                type: 'line',
+                borderColor: '#ffd166',
+                backgroundColor: 'rgba(255,209,102,0.1)',
+                borderWidth: 2,
+                pointRadius: 3,
+                pointBackgroundColor: '#ffd166',
+                tension: 0.25,
+                fill: true,
+                yAxisID: 'y2',
+                order: 1
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            scales: {
+              x: {
+                ticks: { autoSkip: true, maxTicksLimit: 15, color: '#9fb0d7', font: { size: 11 } },
+                grid: { color: 'rgba(255,255,255,0.06)' }
+              },
+              y: {
+                position: 'left',
+                beginAtZero: true,
+                ticks: { maxTicksLimit: 6, color: '#2ee59d', font: { size: 11 } },
+                title: { display: true, text: 'kWh', color: '#2ee59d' },
+                grid: { color: 'rgba(255,255,255,0.06)' }
+              },
+              y2: {
+                position: 'right',
+                beginAtZero: true,
+                grid: { drawOnChartArea: false },
+                ticks: { maxTicksLimit: 6, color: '#ffd166', font: { size: 11 },
+                  callback: function(v) { return '\u00a3' + v.toFixed(2); }
+                },
+                title: { display: true, text: 'Cost (\u00a3)', color: '#ffd166' }
+              }
+            },
+            plugins: {
+              legend: { display: true, labels: { color: '#eaf0ff' } },
+              tooltip: {
+                callbacks: {
+                  label: function(ctx) {
+                    if (ctx.dataset.yAxisID === 'y2') return 'Cost: \u00a3' + ctx.parsed.y.toFixed(2);
+                    return 'Energy: ' + ctx.parsed.y.toFixed(1) + ' kWh';
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+    } catch(e) {
+      console.error('Energy chart load error:', e);
+    }
+  }
+
+  // --- Date dropdown helpers (DD / MM / YYYY triplets) ---
+  const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  function fillDMY(prefix, years) {
+    const dSel = document.getElementById(prefix + 'D');
+    const mSel = document.getElementById(prefix + 'M');
+    const ySel = document.getElementById(prefix + 'Y');
+    if (!dSel || !mSel || !ySel) return;
+    dSel.innerHTML = '';
+    for (let d = 1; d <= 31; d++) {
+      const opt = document.createElement('option');
+      opt.value = String(d).padStart(2,'0');
+      opt.textContent = String(d).padStart(2,'0');
+      dSel.appendChild(opt);
+    }
+    mSel.innerHTML = '';
+    for (let m = 0; m < 12; m++) {
+      const opt = document.createElement('option');
+      opt.value = String(m+1).padStart(2,'0');
+      opt.textContent = MONTH_NAMES[m];
+      mSel.appendChild(opt);
+    }
+    ySel.innerHTML = '';
+    years.forEach(y => {
+      const opt = document.createElement('option');
+      opt.value = String(y);
+      opt.textContent = String(y);
+      ySel.appendChild(opt);
+    });
+  }
+
+  function setDMY(prefix, isoDate) {
+    if (!isoDate) return;
+    const [y,m,d] = isoDate.split('-');
+    const dSel = document.getElementById(prefix + 'D');
+    const mSel = document.getElementById(prefix + 'M');
+    const ySel = document.getElementById(prefix + 'Y');
+    if (dSel) dSel.value = d;
+    if (mSel) mSel.value = m;
+    if (ySel) ySel.value = y;
+  }
+
+  function getDMY(prefix) {
+    const d = document.getElementById(prefix + 'D')?.value || '01';
+    const m = document.getElementById(prefix + 'M')?.value || '01';
+    const y = document.getElementById(prefix + 'Y')?.value || '2026';
+    return y + '-' + m + '-' + d;
+  }
+
+  function initDateDropdowns() {
+    const now = new Date();
+    const thisYear = now.getFullYear();
+    const chartYears = [];
+    for (let y = thisYear - 2; y <= thisYear + 1; y++) chartYears.push(y);
+    const seasonYears = [];
+    for (let y = thisYear - 3; y <= thisYear + 3; y++) seasonYears.push(y);
+
+    fillDMY('ecStart', chartYears);
+    fillDMY('ecEnd', chartYears);
+    fillDMY('seasonStart', seasonYears);
+    fillDMY('seasonEnd', seasonYears);
+
+    // Default chart range: last 30 days -> today
+    const thirtyAgo = new Date(now.getTime() - 30*86400000);
+    setDMY('ecStart', thirtyAgo.toISOString().slice(0,10));
+    setDMY('ecEnd', now.toISOString().slice(0,10));
+  }
+
+  // Init dropdowns now and again on DOMContentLoaded for reliability
+  initDateDropdowns();
+  document.addEventListener('DOMContentLoaded', initDateDropdowns);
 
 </script>
+
+<canvas id="starfield"></canvas>
+<script>
+(function() {
+  var c = document.getElementById('starfield');
+  if (!c) return;
+  var ctx = c.getContext('2d');
+  var W, H;
+
+  function resize() {
+    W = c.width = window.innerWidth;
+    H = c.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  // Star colours matching theme
+  var colors = [
+    [46, 229, 157],   // accent green
+    [122, 167, 255],  // blue
+    [255, 209, 102],  // gold
+    [234, 240, 255],  // white-blue
+    [0, 244, 255],    // cyan (logo)
+  ];
+
+  var STAR_COUNT = 55;
+  var CONNECT_DIST = 150;
+  var stars = [];
+
+  for (var i = 0; i < STAR_COUNT; i++) {
+    var col = colors[Math.floor(Math.random() * colors.length)];
+    stars.push({
+      x: Math.random() * 3840,
+      y: Math.random() * 2160,
+      vx: (Math.random() - 0.5) * 0.25,
+      vy: (Math.random() - 0.5) * 0.25,
+      r: Math.random() * 2 + 0.8,
+      cr: col[0], cg: col[1], cb: col[2],
+      alpha: Math.random() * 0.45 + 0.15,
+      phase: Math.random() * 6.28,
+      speed: Math.random() * 0.012 + 0.004
+    });
+  }
+
+  var lastTime = 0;
+  var FPS_INTERVAL = 1000 / 24; // cap at 24fps to save CPU
+
+  function draw(now) {
+    requestAnimationFrame(draw);
+    if (now - lastTime < FPS_INTERVAL) return;
+    lastTime = now;
+
+    ctx.clearRect(0, 0, W, H);
+
+    // Update positions
+    for (var i = 0; i < stars.length; i++) {
+      var s = stars[i];
+      s.x += s.vx;
+      s.y += s.vy;
+      if (s.x < -20) s.x = W + 20;
+      if (s.x > W + 20) s.x = -20;
+      if (s.y < -20) s.y = H + 20;
+      if (s.y > H + 20) s.y = -20;
+    }
+
+    // Draw connections
+    for (var i = 0; i < stars.length; i++) {
+      for (var j = i + 1; j < stars.length; j++) {
+        var dx = stars[i].x - stars[j].x;
+        var dy = stars[i].y - stars[j].y;
+        var d2 = dx * dx + dy * dy;
+        if (d2 < CONNECT_DIST * CONNECT_DIST) {
+          var d = Math.sqrt(d2);
+          var a = (1 - d / CONNECT_DIST) * 0.08;
+          ctx.beginPath();
+          ctx.moveTo(stars[i].x, stars[i].y);
+          ctx.lineTo(stars[j].x, stars[j].y);
+          ctx.strokeStyle = 'rgba(122,167,255,' + a + ')';
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+      }
+    }
+
+    // Draw stars
+    var t = now * 0.001;
+    for (var i = 0; i < stars.length; i++) {
+      var s = stars[i];
+      var pulse = Math.sin(t * s.speed + s.phase) * 0.3 + 0.7;
+      var a = s.alpha * pulse;
+
+      // Glow for larger stars
+      if (s.r > 1.5) {
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r * 3, 0, 6.28);
+        ctx.fillStyle = 'rgba(' + s.cr + ',' + s.cg + ',' + s.cb + ',' + (a * 0.1) + ')';
+        ctx.fill();
+      }
+
+      // Core dot
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, 6.28);
+      ctx.fillStyle = 'rgba(' + s.cr + ',' + s.cg + ',' + s.cb + ',' + a + ')';
+      ctx.fill();
+    }
+  }
+  requestAnimationFrame(draw);
+})();
+</script>
+
 </body>
 </html>
