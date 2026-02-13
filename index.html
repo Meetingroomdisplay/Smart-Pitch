@@ -3804,7 +3804,29 @@ document.addEventListener("DOMContentLoaded", function() {
             sessions: 22,
             confidence: 0.95
           },
-          matches: { exact: 22, band3: 35, band2: 48, band1: 67, global: 120 }
+          matches: { exact: 22, band3: 35, band2: 48, band1: 67, global: 120 },
+          forecast_match: {
+            forecast_bands: {
+              temp_band: 'T-2..0',
+              cloud_band: 'C60..85',
+              humidity_band: 'H60..80',
+              wind_band: 'W2..5'
+            },
+            match: {
+              match_tier: 'TIER1_EXACT',
+              total_sessions: 22,
+              passes: 21,
+              fails: 1,
+              pass_rate: 95.5,
+              avg_pass_lead_hours: 6.3,
+              avg_pass_wish_temp: 42.0,
+              avg_pass_energy_kwh: 485,
+              temp_band: 'T-2..0',
+              cloud_band: 'C60..85',
+              humidity_band: 'H60..80',
+              wind_band: 'W2..5'
+            }
+          }
         },
         upcoming_frost: [
           {
@@ -3951,74 +3973,8 @@ document.addEventListener("DOMContentLoaded", function() {
       return { rate: mockState.rate };
     },
 
-    'GET /api/gui': function() {
-      return {
-        mode: { mode: mockState.mode, smartpitch_submode: 'MONITOR' },
-        status: {
-          latest_trend: {
-            ts: new Date().toISOString(),
-            outside_temp_c: 4.2,
-            avg_field_8cm_c: 6.0,
-            avg_field_25cm_c: 8.5,
-            wind_speed: 12,
-            cloud_cover_pct: 65,
-            humidity_pct: 78,
-            heat_enabled: false,
-            sec_flow_c: 42.5,
-            sec_return_c: 38.1
-          }
-        }
-      };
-    },
-
-    'GET /api/status': function() {
-      return {
-        building_protect_active: false,
-        forecast_override_active: false,
-        mode: mockState.mode
-      };
-    },
-
-    'GET /api/cost': function() {
-      return {
-        season_to_date: { kwh: 14280, cost_gbp: 1856.40 },
-        current_rate: { pence_per_kwh: mockState.rate },
-        season: { start: '2025-10-01', end: '2026-04-30' }
-      };
-    },
-
-    'GET /api/frost/status': function() {
-      return { frostDetected: false };
-    },
-
-    'GET /api/manual/state': function() {
-      return {
-        override_enabled: mockState.manual_override,
-        do1: false, do2: false, do3: false, do4: false, do5: false, do6: false,
-        ao1: 0, ao1_enabled: false, ao2: 0, ao2_enabled: false,
-        ao3: 0, ao3_enabled: false, ao4: 0, ao4_enabled: false
-      };
-    },
-
-    'GET /api/learning/bands': function() {
-      return {
-        tiers: [
-          { tier: 'TIER1_EXACT', bands: '0-2 / low / wet / 5-8', sessions: 12, avg_lead: 48.2, pass_rate: 0.83 },
-          { tier: 'TIER2_3BAND', bands: '0-2 / low / wet', sessions: 28, avg_lead: 50.8, pass_rate: 0.79 },
-          { tier: 'TIER3_2BAND', bands: '0-2 / low', sessions: 45, avg_lead: 52.1, pass_rate: 0.76 },
-          { tier: 'TIER4_1BAND', bands: '0-2', sessions: 61, avg_lead: 54.5, pass_rate: 0.72 },
-          { tier: 'TIER5_GLOBAL', bands: 'all', sessions: 89, avg_lead: 56.0, pass_rate: 0.68 }
-        ],
-        active_tier: 'TIER2_3BAND'
-      };
-    },
-
     'GET /api/settings/season': function() {
       return { start: '2025-10-01', end: '2026-04-30' };
-    },
-
-    'GET /api/settings/pitch_selection': function() {
-      return { value: mockState.pitch_selection };
     }
   };
 
