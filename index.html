@@ -10658,15 +10658,16 @@ function showHeatingSub(sub) {
   }
   
   async function loadFlowRate() {
-    let flowRate = parseFloat(localStorage.getItem('smartpitch_flow_rate')) || 0;
+    let flowRate = 0;
     
     try {
       const res = await fetch('/api/settings/flow_rate').then(r => r.ok ? r.json() : null).catch(() => null);
-      if (res && res.value !== undefined) {
-        flowRate = parseFloat(res.value) || 0;
-        localStorage.setItem('smartpitch_flow_rate', flowRate);
+      if (res) {
+        var v = res.value !== undefined ? res.value : res.flow_rate_lpm;
+        if (v !== undefined) flowRate = parseFloat(v) || 0;
       }
     } catch (e) {}
+    if (!flowRate) flowRate = 44;
     
     const input = document.getElementById('flowRateInput');
     if (input && flowRate > 0) input.value = flowRate;
