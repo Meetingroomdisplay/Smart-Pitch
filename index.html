@@ -4399,6 +4399,7 @@ document.addEventListener("DOMContentLoaded", function() {
       gap:10px;
       flex-wrap:wrap;
       margin-top:14px;
+      position:relative;
     }
     .manual-btn{
       cursor:pointer;
@@ -4409,13 +4410,15 @@ document.addEventListener("DOMContentLoaded", function() {
       border-radius: 16px;
       font-weight: 700;
       font-size: 13px;
-      margin-left:auto;
       text-decoration:none;
       display:inline-flex;
       align-items:center;
       gap:6px;
       white-space:nowrap;
       transition: background 0.2s, border-color 0.2s;
+      position:absolute;
+      right:0;
+      top:0;
     }
     .manual-btn:hover{
       background: rgba(122,167,255,0.18);
