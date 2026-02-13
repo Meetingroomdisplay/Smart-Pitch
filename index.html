@@ -4393,15 +4393,22 @@ document.addEventListener("DOMContentLoaded", function() {
       margin-top: 2px;
     }
 
+    .tabs-row{
+      display:grid;
+      grid-template-columns:1fr auto 1fr;
+      align-items:start;
+      margin-top:14px;
+    }
     .tabs{
+      grid-column:2;
       display:flex;
       justify-content:center;
       gap:10px;
       flex-wrap:wrap;
-      margin-top:14px;
-      position:relative;
     }
     .manual-btn{
+      grid-column:3;
+      justify-self:end;
       cursor:pointer;
       border:1px solid rgba(122,167,255,0.35);
       background: rgba(122,167,255,0.08);
@@ -4416,9 +4423,6 @@ document.addEventListener("DOMContentLoaded", function() {
       gap:6px;
       white-space:nowrap;
       transition: background 0.2s, border-color 0.2s;
-      position:absolute;
-      right:0;
-      top:0;
     }
     .manual-btn:hover{
       background: rgba(122,167,255,0.18);
@@ -5584,14 +5588,16 @@ document.addEventListener("DOMContentLoaded", function() {
       </div>
     </div>
 
-    <div class="tabs">
-      <button class="tabbtn active" id="tabDashboard" onclick="showTab('Dashboard')">Dashboard</button>
-      <button class="tabbtn" id="tabForecast" onclick="showTab('Forecast')">Forecast</button>
-      <button class="tabbtn" id="tabSchedule" onclick="showTab('Schedule')">Schedule</button>
-      <button class="tabbtn" id="tabHeating" onclick="showTab('Heating')">Heating Control</button>
-      <button class="tabbtn" id="tabData" onclick="showTab('Data')">Data</button>
-      <button class="tabbtn" id="tabEnergy" onclick="showTab('Energy')">Energy</button>
-      <button class="tabbtn" id="tabAdvanced" onclick="showTab('Advanced')">Advanced</button>
+    <div class="tabs-row">
+      <div class="tabs">
+        <button class="tabbtn active" id="tabDashboard" onclick="showTab('Dashboard')">Dashboard</button>
+        <button class="tabbtn" id="tabForecast" onclick="showTab('Forecast')">Forecast</button>
+        <button class="tabbtn" id="tabSchedule" onclick="showTab('Schedule')">Schedule</button>
+        <button class="tabbtn" id="tabHeating" onclick="showTab('Heating')">Heating Control</button>
+        <button class="tabbtn" id="tabData" onclick="showTab('Data')">Data</button>
+        <button class="tabbtn" id="tabEnergy" onclick="showTab('Energy')">Energy</button>
+        <button class="tabbtn" id="tabAdvanced" onclick="showTab('Advanced')">Advanced</button>
+      </div>
       <a class="manual-btn" href="SmartPitch_Technical_Documentation.html" target="_blank">&#128214; Manual</a>
     </div>
 
