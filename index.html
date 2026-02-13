@@ -4400,6 +4400,28 @@ document.addEventListener("DOMContentLoaded", function() {
       flex-wrap:wrap;
       margin-top:14px;
     }
+    .manual-btn{
+      cursor:pointer;
+      border:1px solid rgba(122,167,255,0.35);
+      background: rgba(122,167,255,0.08);
+      color:#7aa7ff;
+      padding:11px 18px;
+      border-radius: 16px;
+      font-weight: 700;
+      font-size: 13px;
+      margin-left:auto;
+      text-decoration:none;
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      white-space:nowrap;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .manual-btn:hover{
+      background: rgba(122,167,255,0.18);
+      border-color: rgba(122,167,255,0.55);
+      color:#a0c4ff;
+    }
     .tabbtn{
       cursor:pointer;
       border:1px solid var(--border);
@@ -5567,6 +5589,7 @@ document.addEventListener("DOMContentLoaded", function() {
       <button class="tabbtn" id="tabData" onclick="showTab('Data')">Data</button>
       <button class="tabbtn" id="tabEnergy" onclick="showTab('Energy')">Energy</button>
       <button class="tabbtn" id="tabAdvanced" onclick="showTab('Advanced')">Advanced</button>
+      <a class="manual-btn" href="SmartPitch_Technical_Documentation.html" target="_blank">&#128214; Manual</a>
     </div>
 
     <!-- DASHBOARD -->
