@@ -8654,24 +8654,84 @@ function showHeatingSub(sub) {
     doFrostCamRefresh();
   }
   
+  // Generate demo camera image inline (two pitches from high column)
+  function generateDemoCameraImage() {
+    var c = document.createElement('canvas');
+    c.width = 960; c.height = 540;
+    var ctx = c.getContext('2d');
+    // Sky
+    var sky = ctx.createLinearGradient(0,0,0,180);
+    sky.addColorStop(0,'#2a3a4a'); sky.addColorStop(1,'#4a5a6a');
+    ctx.fillStyle = sky; ctx.fillRect(0,0,960,180);
+    // Grass
+    var grass = ctx.createLinearGradient(0,180,0,540);
+    grass.addColorStop(0,'#1a3d1a'); grass.addColorStop(0.5,'#2a5e2a'); grass.addColorStop(1,'#1e4a1e');
+    ctx.fillStyle = grass; ctx.fillRect(0,180,960,360);
+    // Mow stripes
+    ctx.globalAlpha = 0.08;
+    for(var s=180;s<540;s+=18){ if((s/18)%2===0){ ctx.fillStyle='#fff'; ctx.fillRect(0,s,960,18); } }
+    ctx.globalAlpha = 1.0;
+    // Draw a pitch
+    function drawPitch(cx,topY,topW,botY,botW,label){
+      var ltx=cx-topW/2,rtx=cx+topW/2,lbx=cx-botW/2,rbx=cx+botW/2;
+      ctx.strokeStyle='rgba(255,255,255,0.7)'; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.moveTo(ltx,topY); ctx.lineTo(rtx,topY);
+      ctx.lineTo(rbx,botY); ctx.lineTo(lbx,botY); ctx.closePath(); ctx.stroke();
+      var midY=(topY+botY)/2, midW=(topW+botW)/2;
+      ctx.beginPath(); ctx.moveTo(cx-midW/2,midY); ctx.lineTo(cx+midW/2,midY); ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx,midY,midW*0.1,0,Math.PI*2); ctx.stroke();
+      ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(cx,midY,2,0,Math.PI*2); ctx.fill();
+      var gaW=topW*0.35,gaH=(botY-topY)*0.08;
+      ctx.strokeRect(cx-gaW/2,topY,gaW,gaH);
+      ctx.strokeRect(cx-botW*0.35/2,botY-gaH,botW*0.35,gaH);
+      ctx.strokeRect(cx-topW*0.6/2,topY,topW*0.6,(botY-topY)*0.16);
+      ctx.strokeRect(cx-botW*0.6/2,botY-(botY-topY)*0.16,botW*0.6,(botY-topY)*0.16);
+      ctx.fillStyle='rgba(255,255,255,0.4)'; ctx.font='11px system-ui,sans-serif';
+      ctx.textAlign='center'; ctx.fillText(label,cx,botY+14);
+    }
+    drawPitch(280,195,200,490,260,'PITCH 1');
+    drawPitch(680,195,200,490,260,'PITCH 2');
+    // Path between pitches
+    ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.setLineDash([4,4]);
+    ctx.beginPath(); ctx.moveTo(480,195); ctx.lineTo(480,490); ctx.stroke();
+    ctx.setLineDash([]);
+    // Treeline
+    ctx.fillStyle='#152015';
+    for(var t=0;t<960;t+=12){ var th=8+Math.sin(t*0.07)*6+Math.random()*4; ctx.fillRect(t,180-th,12,th); }
+    // Camera HUD
+    var now=new Date();
+    var ts=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0')+' '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
+    ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(0,0,260,28); ctx.fillRect(700,0,260,28);
+    ctx.fillStyle='#fff'; ctx.font='bold 13px monospace';
+    ctx.textAlign='left'; ctx.fillText('CAM-01  FROST MONITOR',10,18);
+    ctx.textAlign='right'; ctx.fillText(ts,950,18);
+    // Vignette
+    var vig=ctx.createRadialGradient(480,270,200,480,270,520);
+    vig.addColorStop(0,'rgba(0,0,0,0)'); vig.addColorStop(1,'rgba(0,0,0,0.35)');
+    ctx.fillStyle=vig; ctx.fillRect(0,0,960,540);
+    return c.toDataURL('image/png');
+  }
+
+  var _demoCamCache = null;
   function doFrostCamRefresh() {
     if (!frostCamActive || !isFrostCamTabVisible()) {
       stopFrostCamRefresh();
       return;
     }
-    
+
     const img = document.getElementById('frostCamImg');
     const feed = document.getElementById('frostCamFeed');
-    
+
     // Extra safety: ensure img is still inside frostCamFeed
     if (img && feed && img.parentElement === feed) {
-      if (window.__demoCameraUrl) {
-        img.src = window.__demoCameraUrl;
+      if (window.__demoCameraUrl || typeof generateDemoCameraImage === 'function') {
+        if (!_demoCamCache) _demoCamCache = generateDemoCameraImage();
+        img.src = _demoCamCache;
       } else {
         img.src = '/api/camera/snapshot?t=' + Date.now();
       }
     }
-    
+
     if (frostCamActive) {
       frostCamTimer = setTimeout(doFrostCamRefresh, 3000);
     }
