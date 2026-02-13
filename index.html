@@ -7992,7 +7992,8 @@ document.addEventListener("DOMContentLoaded", function() {
         bpStatus.textContent = bpActive ? 'ACTIVE' : 'INACTIVE';
         bpStatus.style.color = bpActive ? '#ff9f43' : 'var(--muted)';
       }
-\n    }).catch(e => console.error('PLC display error:', e));
+
+    }).catch(e => console.error('PLC display error:', e));
   }
 
   
@@ -11851,7 +11852,9 @@ function saveSmartPitchSettings() {
   }
 
 
-\n\n
+
+
+
   // Auto-refresh page every 4 hours to prevent memory buildup
   setTimeout(function() {
     console.log('Auto-refreshing page to clear memory...');
