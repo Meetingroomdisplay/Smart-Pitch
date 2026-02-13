@@ -3391,25 +3391,25 @@ document.addEventListener("DOMContentLoaded", function() {
     manual_override: false,
     manual_dos: {},
     manual_aos: {},
-    rate: 15.0,
+    rate: 4.5,
     pitch_selection: 'both',
     settings: {
-      frost_threshold: 2.0,
+      frost_threshold: 0,
       wind_chill_enabled: true,
-      lead_hours: 6,
-      min_lead_hours: 3,
-      max_lead_hours: 12,
-      wish_temp: 42,
-      mode_switch_temp: 8,
-      eco_setback: 5
+      lead_hours: 40,
+      min_lead_hours: 6,
+      max_lead_hours: 48,
+      wish_temp: 21,
+      mode_switch_temp: 5,
+      eco_setback: 3
     },
     forecast_settings: {
       value: { duration: 24, temp_type: 'real' }
     },
     standard_settings: {
-      wish_temp: 42,
-      frost_threshold: 2.0,
-      lead_hours: 6
+      wish_temp: 21,
+      frost_threshold: 0,
+      lead_hours: 40
     },
     alarm_settings: {
       email_enabled: true,
@@ -3419,7 +3419,7 @@ document.addEventListener("DOMContentLoaded", function() {
       sensor_fault: true
     },
     flow_rate_settings: {
-      flow_rate_lpm: 85.0,
+      flow_rate_lpm: 44.1,
       pipe_diameter_mm: 25,
       circuit_length_m: 1200
     },
@@ -3432,13 +3432,13 @@ document.addEventListener("DOMContentLoaded", function() {
       timing: { sampleInterval: 2, smoothingWindow: 10, stateChangeDelay: 5 }
     },
     frost_settings: {
-      threshold: 2.0,
+      threshold: 0,
       temp_type: 'feels_like',
       deadband: 0.5,
       min_heat_minutes: 30,
-      soil_frozen_threshold: 1.0,
+      soil_frozen_threshold: 3.5,
       forecast_override_enabled: true,
-      forecast_override_threshold: 1.5
+      forecast_override_threshold: 5.0
     },
     smartpitch_settings: {
       enabled: true,
@@ -3450,9 +3450,9 @@ document.addEventListener("DOMContentLoaded", function() {
     },
     pid_params: { kp: 2.5, tn: 180, tv: 30 },
     heatcurve: {
-      x1_outside_c: -10, y1_flow_c: 65,
-      xk_outside_c: -2, yk_flow_c: 48,
-      x2_outside_c: 15, y2_flow_c: 28
+      x1_outside_c: -10, y1_flow_c: 30,
+      xk_outside_c: -6, yk_flow_c: 22,
+      x2_outside_c: 4, y2_flow_c: 16
     }
   };
 
@@ -3566,18 +3566,23 @@ document.addEventListener("DOMContentLoaded", function() {
     page = page || 1; limit = limit || 20;
     var rows = [], now = Date.now(), total = 200, offset = (page - 1) * limit;
     for (var i = 0; i < limit && (offset + i) < total; i++) {
-      var t = now - (offset + i) * 5 * 60 * 1000;
+      var t = now - (offset + i) * 10 * 60 * 1000;
       var h = new Date(t).getHours() + new Date(t).getMinutes() / 60;
+      var outsideTemp = +(0.7 + 3 * Math.sin((h - 14) * Math.PI / 12) + (Math.random() - 0.5) * 0.4).toFixed(2);
+      var heating = outsideTemp < 4;
       rows.push({
         id: total - offset - i,
         timestamp: new Date(t).toISOString(),
-        outside_temp_c: +(4 + 4 * Math.sin((h - 10) * Math.PI / 12)).toFixed(1),
-        avg_field_8cm_c: +(7 + 1.5 * Math.sin((h - 12) * Math.PI / 12)).toFixed(1),
-        avg_field_25cm_c: +(9 + 0.4 * Math.sin((h - 14) * Math.PI / 12)).toFixed(1),
-        flow_temp_c: +(40 + Math.random() * 5).toFixed(1),
-        return_temp_c: +(32 + Math.random() * 4).toFixed(1),
-        valve_pos_pct: Math.round(70 + Math.random() * 25),
-        heat_enabled: true,
+        outside_temp_c: outsideTemp,
+        avg_field_8cm_c: +(5.6 + 0.8 * Math.sin((h - 16) * Math.PI / 12)).toFixed(1),
+        avg_field_25cm_c: +(8.2 + 0.3 * Math.sin((h - 18) * Math.PI / 12)).toFixed(1),
+        flow_temp_c: heating ? +(18 + Math.random() * 6).toFixed(1) : null,
+        return_temp_c: heating ? +(15 + Math.random() * 5).toFixed(1) : null,
+        valve_pos_pct: heating ? Math.round(55 + Math.random() * 30) : 0,
+        wind_speed: +(8 + Math.random() * 10).toFixed(1),
+        cloud_cover_pct: Math.round(75 + Math.random() * 25),
+        humidity_pct: Math.round(78 + Math.random() * 10),
+        heat_enabled: heating,
         mode: 'SMARTPITCH'
       });
     }
@@ -3587,27 +3592,39 @@ document.addEventListener("DOMContentLoaded", function() {
   // ── Generate SmartPitch session logs ──
   function generateSmartPitchLogs(page, limit) {
     page = page || 1; limit = limit || 20;
-    var rows = [], total = 45, offset = (page - 1) * limit;
-    var bands = ['(-5,-2]', '(-2,0]', '(0,2]', '(2,5]'];
+    var rows = [], total = 32, offset = (page - 1) * limit;
+    var tempBands = ['T-4..-2', 'T-2..0', 'T0..2', 'T>2'];
+    var cloudBands = ['C>85', 'C60..85', 'C30..60'];
+    var humBands = ['H>80', 'H60..80'];
+    var windBands = ['W2..5', 'W5..8', 'W0..2'];
+    var tiers = ['TIER1_EXACT', 'TIER2_3BAND', 'TIER3_2BAND', 'TIER4_1BAND'];
     for (var i = 0; i < limit && (offset + i) < total; i++) {
       var idx = offset + i;
-      var daysAgo = idx * 2 + Math.floor(Math.random() * 2);
+      var daysAgo = idx * 2 + Math.floor(Math.random() * 3);
       var t = Date.now() - daysAgo * 86400000;
-      var heated = Math.random() > 0.2;
+      // ~84% pass rate, fails correlate with cold soil and high wish temp
+      var soilTemp = +(5.5 + Math.random() * 12.5).toFixed(1);
+      var isFail = (soilTemp < 7.5 && Math.random() > 0.4) || Math.random() > 0.92;
+      var wishTemp = isFail ? +(22.5 + Math.random() * 4).toFixed(1) : +(19.5 + Math.random() * 3).toFixed(1);
+      var leadHrs = isFail ? +(2 + Math.random() * 4).toFixed(1) : +(6 + Math.random() * 36).toFixed(1);
+      var frostForecast = +(-4 + Math.random() * 8).toFixed(1);
       rows.push({
         session_id: total - idx,
         deadline: new Date(t).toISOString(),
-        worst_frost_forecast_c: +(-2 + Math.random() * 6).toFixed(1),
-        forecast_band: bands[Math.floor(Math.random() * bands.length)],
-        heated: heated,
-        wish_temp_c: heated ? 42 : null,
-        lead_hours: heated ? +(4 + Math.random() * 4).toFixed(1) : null,
-        energy_kwh: heated ? +(80 + Math.random() * 120).toFixed(0) : null,
-        frost_outcome: Math.random() > 0.15 ? 'PASS' : 'FAIL',
-        leaf_frost: Math.random() > 0.85,
-        start_soil_temp_c: +(5 + Math.random() * 4).toFixed(1),
-        soil_band: Math.random() > 0.5 ? 'COLD' : 'MODERATE',
-        tier: 'TIER' + (Math.floor(Math.random() * 3) + 1)
+        worst_frost_forecast_c: frostForecast,
+        forecast_band: tempBands[frostForecast < -2 ? 0 : frostForecast < 0 ? 1 : frostForecast < 2 ? 2 : 3],
+        cloud_band: cloudBands[Math.floor(Math.random() * cloudBands.length)],
+        humidity_band: humBands[Math.floor(Math.random() * humBands.length)],
+        wind_band: windBands[Math.floor(Math.random() * windBands.length)],
+        heated: true,
+        wish_temp_c: +wishTemp,
+        lead_hours: +leadHrs,
+        energy_kwh: null,
+        frost_outcome: isFail ? 'FAIL' : 'PASS',
+        leaf_frost: isFail ? (Math.random() > 0.5) : false,
+        start_soil_temp_c: soilTemp,
+        soil_band: soilTemp < 6 ? 'COLD' : soilTemp < 10 ? 'MODERATE' : 'WARM',
+        tier: tiers[Math.floor(Math.random() * tiers.length)]
       });
     }
     return { rows: rows, total: total, page: page, limit: limit, pages: Math.ceil(total / limit) };
@@ -3734,16 +3751,14 @@ document.addEventListener("DOMContentLoaded", function() {
 
   // ── Learning bands data (matches data.rows with temp_band, sessions, pass, fail, pass_rate, avg_lead_hours) ──
   var learningBandsRows = [
-    { temp_band:'(-10,-5]', cloud_band:'overcast', humidity_band:'high', wind_band:'calm', sessions:3, pass:3, fail:0, pass_rate:1.00, avg_lead_hours:9.2, avg_margin_hours:2.1, avg_pass_wish:58, avg_fail_wish:null },
-    { temp_band:'(-5,-2]', cloud_band:'overcast', humidity_band:'high', wind_band:'calm', sessions:8, pass:7, fail:1, pass_rate:0.88, avg_lead_hours:7.1, avg_margin_hours:1.5, avg_pass_wish:52, avg_fail_wish:48 },
-    { temp_band:'(-5,-2]', cloud_band:'cloudy', humidity_band:'medium', wind_band:'light', sessions:12, pass:11, fail:1, pass_rate:0.92, avg_lead_hours:6.3, avg_margin_hours:1.8, avg_pass_wish:48, avg_fail_wish:45 },
-    { temp_band:'(-2,0]', cloud_band:'overcast', humidity_band:'high', wind_band:'calm', sessions:15, pass:14, fail:1, pass_rate:0.93, avg_lead_hours:5.8, avg_margin_hours:1.4, avg_pass_wish:45, avg_fail_wish:42 },
-    { temp_band:'(-2,0]', cloud_band:'cloudy', humidity_band:'medium', wind_band:'light', sessions:22, pass:21, fail:1, pass_rate:0.95, avg_lead_hours:4.9, avg_margin_hours:1.2, avg_pass_wish:42, avg_fail_wish:38 },
-    { temp_band:'(-2,0]', cloud_band:'partly_cloudy', humidity_band:'low', wind_band:'moderate', sessions:7, pass:7, fail:0, pass_rate:1.00, avg_lead_hours:4.1, avg_margin_hours:1.6, avg_pass_wish:40, avg_fail_wish:null },
-    { temp_band:'(0,2]', cloud_band:'overcast', humidity_band:'high', wind_band:'calm', sessions:10, pass:9, fail:1, pass_rate:0.90, avg_lead_hours:4.5, avg_margin_hours:1.0, avg_pass_wish:40, avg_fail_wish:38 },
-    { temp_band:'(0,2]', cloud_band:'cloudy', humidity_band:'medium', wind_band:'light', sessions:18, pass:17, fail:1, pass_rate:0.94, avg_lead_hours:3.8, avg_margin_hours:0.9, avg_pass_wish:38, avg_fail_wish:35 },
-    { temp_band:'(2,5]', cloud_band:'cloudy', humidity_band:'medium', wind_band:'light', sessions:14, pass:13, fail:1, pass_rate:0.93, avg_lead_hours:3.2, avg_margin_hours:0.8, avg_pass_wish:35, avg_fail_wish:32 },
-    { temp_band:'(2,5]', cloud_band:'partly_cloudy', humidity_band:'low', wind_band:'moderate', sessions:6, pass:6, fail:0, pass_rate:1.00, avg_lead_hours:2.5, avg_margin_hours:1.1, avg_pass_wish:32, avg_fail_wish:null }
+    { temp_band:'T-4..-2', cloud_band:'C>85', humidity_band:'H>80', wind_band:'W5..8', sessions:5, pass:4, fail:1, pass_rate:0.80, avg_lead_hours:40.1, avg_margin_hours:1.5, avg_pass_wish:22.5, avg_fail_wish:26.5 },
+    { temp_band:'T-2..0', cloud_band:'C>85', humidity_band:'H>80', wind_band:'W2..5', sessions:8, pass:7, fail:1, pass_rate:0.88, avg_lead_hours:18.2, avg_margin_hours:1.0, avg_pass_wish:21.4, avg_fail_wish:23.2 },
+    { temp_band:'T-2..0', cloud_band:'C60..85', humidity_band:'H60..80', wind_band:'W2..5', sessions:6, pass:6, fail:0, pass_rate:1.00, avg_lead_hours:14.8, avg_margin_hours:2.1, avg_pass_wish:20.5, avg_fail_wish:null },
+    { temp_band:'T0..2', cloud_band:'C>85', humidity_band:'H>80', wind_band:'W5..8', sessions:4, pass:3, fail:1, pass_rate:0.75, avg_lead_hours:12.6, avg_margin_hours:0.8, avg_pass_wish:20.0, avg_fail_wish:22.9 },
+    { temp_band:'T0..2', cloud_band:'C60..85', humidity_band:'H60..80', wind_band:'W2..5', sessions:7, pass:7, fail:0, pass_rate:1.00, avg_lead_hours:10.2, avg_margin_hours:1.4, avg_pass_wish:20.1, avg_fail_wish:null },
+    { temp_band:'T0..2', cloud_band:'C30..60', humidity_band:'H<60', wind_band:'W0..2', sessions:3, pass:3, fail:0, pass_rate:1.00, avg_lead_hours:6.5, avg_margin_hours:2.8, avg_pass_wish:20.0, avg_fail_wish:null },
+    { temp_band:'T>2', cloud_band:'C>85', humidity_band:'H>80', wind_band:'W2..5', sessions:4, pass:3, fail:1, pass_rate:0.75, avg_lead_hours:8.4, avg_margin_hours:0.6, avg_pass_wish:20.0, avg_fail_wish:23.3 },
+    { temp_band:'T>2', cloud_band:'C60..85', humidity_band:'H60..80', wind_band:'W0..2', sessions:5, pass:5, fail:0, pass_rate:1.00, avg_lead_hours:5.2, avg_margin_hours:3.1, avg_pass_wish:20.0, avg_fail_wish:null }
   ];
 
   // ── Route table ──
@@ -3757,12 +3772,12 @@ document.addEventListener("DOMContentLoaded", function() {
           smartpitch_submode: 'MONITOR',
           learning_match_info: {
             match: {
-              avg_pass_lead_hours: 6.3,
-              optimal_wish_temp: 42,
-              sessions: 22,
-              pass_rate: 0.95,
-              tier: 'TIER1_EXACT',
-              forecast_band: '(-2,0]',
+              avg_pass_lead_hours: 40.1,
+              optimal_wish_temp: 22.5,
+              sessions: 5,
+              pass_rate: 0.80,
+              tier: 'TIER4_1BAND',
+              forecast_band: 'T-4..-2',
               soil_band: 'MODERATE'
             }
           }
@@ -3770,18 +3785,18 @@ document.addEventListener("DOMContentLoaded", function() {
         status: {
           latest_trend: {
             ts: new Date().toISOString(),
-            outside_temp_c: 3.2,
-            avg_field_8cm_c: 7.1,
-            avg_field_25cm_c: 9.4,
-            flow_temp_c: 42.3,
-            return_temp_c: 34.1,
-            sec_flow_c: 42.3,
-            sec_return_c: 34.1,
-            wind_speed: 4.2,
-            cloud_cover_pct: 65,
-            humidity_pct: 78,
+            outside_temp_c: 1.0,
+            avg_field_8cm_c: 6.0,
+            avg_field_25cm_c: 8.5,
+            flow_temp_c: 21.4,
+            return_temp_c: 18.2,
+            sec_flow_c: 21.4,
+            sec_return_c: 18.2,
+            wind_speed: 16.3,
+            cloud_cover_pct: 100,
+            humidity_pct: 83,
             heat_enabled: true,
-            valve_pos_pct: 82
+            valve_pos_pct: 72
           },
           latest_decision: {
             action: 'MONITOR',
@@ -3796,35 +3811,35 @@ document.addEventListener("DOMContentLoaded", function() {
             hours_until: 18
           },
           recommendation: {
-            lead_hours: 6.3,
-            wish_temp: 42,
-            tier: 'TIER1_EXACT',
-            band: '(-2,0]',
+            lead_hours: 40.1,
+            wish_temp: 22.5,
+            tier: 'TIER4_1BAND',
+            band: 'T-4..-2',
             soil_band: 'MODERATE',
-            sessions: 22,
-            confidence: 0.95
+            sessions: 5,
+            confidence: 0.80
           },
-          matches: { exact: 22, band3: 35, band2: 48, band1: 67, global: 120 },
+          matches: { exact: 5, band3: 8, band2: 14, band1: 19, global: 32 },
           forecast_match: {
             forecast_bands: {
               temp_band: 'T-2..0',
-              cloud_band: 'C60..85',
-              humidity_band: 'H60..80',
-              wind_band: 'W2..5'
+              cloud_band: 'C>85',
+              humidity_band: 'H>80',
+              wind_band: 'W5..8'
             },
             match: {
-              match_tier: 'TIER1_EXACT',
-              total_sessions: 22,
-              passes: 21,
+              match_tier: 'TIER2_3BAND',
+              total_sessions: 8,
+              passes: 7,
               fails: 1,
-              pass_rate: 95.5,
-              avg_pass_lead_hours: 6.3,
-              avg_pass_wish_temp: 42.0,
-              avg_pass_energy_kwh: 485,
+              pass_rate: 87.5,
+              avg_pass_lead_hours: 18.2,
+              avg_pass_wish_temp: 21.4,
+              avg_pass_energy_kwh: null,
               temp_band: 'T-2..0',
-              cloud_band: 'C60..85',
-              humidity_band: 'H60..80',
-              wind_band: 'W2..5'
+              cloud_band: 'C>85',
+              humidity_band: 'H>80',
+              wind_band: 'W5..8'
             }
           }
         },
@@ -3847,27 +3862,28 @@ document.addEventListener("DOMContentLoaded", function() {
         timestamp: new Date().toISOString(),
         latest_trend: {
           ts: new Date().toISOString(),
-          outside_temp_c: 3.2,
-          avg_field_8cm_c: 7.1,
-          avg_field_25cm_c: 9.4,
-          flow_temp_c: 42.3,
-          return_temp_c: 34.1,
-          sec_flow_c: 42.3,
-          sec_return_c: 34.1,
-          wish_temp_c: 42,
-          valve_pos_pct: 82,
+          outside_temp_c: 1.0,
+          avg_field_8cm_c: 6.0,
+          avg_field_25cm_c: 8.5,
+          flow_temp_c: 21.4,
+          return_temp_c: 18.2,
+          sec_flow_c: 21.4,
+          sec_return_c: 18.2,
+          wish_temp_c: 21.4,
+          valve_pos_pct: 72,
           heat_enabled: mockState.heat_enabled,
-          wind_speed: 4.2,
-          humidity_pct: 78
+          wind_speed: 16.3,
+          cloud_cover_pct: 100,
+          humidity_pct: 83
         },
         building_protect_active: false,
-        forecast_override_active: false,
+        forecast_override_active: true,
         mode: mockState.mode,
         DI0: true, DI1: false, DI2: true, DI3: false, DI4: false, DI5: true,
         DO0: !!mockState.manual_dos.do1, DO1: !!mockState.manual_dos.do2,
         DO2: !!mockState.manual_dos.do3, DO3: !!mockState.manual_dos.do4,
         DO4: !!mockState.manual_dos.do5, DO5: !!mockState.manual_dos.do6,
-        AI0: 42.3, AI1: 34.1, AI2: 7.1, AI3: 3.2,
+        AI0: 21.4, AI1: 18.2, AI2: 6.0, AI3: 1.0,
         AO0: mockState.manual_aos.ao1 || 0, AO1: mockState.manual_aos.ao2 || 0,
         pump_running: true,
         boiler_firing: true,
@@ -3916,8 +3932,8 @@ document.addEventListener("DOMContentLoaded", function() {
     'GET /api/cost': function() {
       return {
         season_to_date: {
-          kwh: 859622,
-          cost_gbp: 128943.32
+          kwh: 826400,
+          cost_gbp: 37188.00
         },
         current_rate: {
           pence_per_kwh: mockState.rate
