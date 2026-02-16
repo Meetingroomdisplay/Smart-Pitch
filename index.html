@@ -5551,6 +5551,40 @@ document.addEventListener("DOMContentLoaded", function() {
       z-index: 0;
       pointer-events: none;
     }
+
+    /* ── Fault Banner ── */
+    #faultBanner{display:none;align-items:center;gap:8px;background:rgba(211,47,47,0.15);border:1px solid rgba(211,47,47,0.4);border-radius:8px;color:#ff6b6b;font-weight:700;font-size:13px;padding:8px 12px;margin:8px 0 0 0;cursor:pointer;letter-spacing:0.3px;user-select:none;}
+    #faultBanner:hover{background:rgba(211,47,47,0.25);}
+    #faultSummary{font-weight:400;opacity:0.85;}
+    #faultDismiss{margin-left:auto;background:none;border:none;color:rgba(255,107,107,0.6);font-size:18px;cursor:pointer;padding:0 4px;line-height:1;}
+    #faultDismiss:hover{color:#ff6b6b;}
+
+    /* ── Active Faults Card ── */
+    .active-faults-card{background:rgba(211,47,47,0.08);border:1px solid rgba(211,47,47,0.3);border-radius:12px;padding:16px;margin-bottom:16px;}
+    .active-faults-card h3{color:#ff6b6b;font-size:15px;margin:0 0 10px 0;}
+    .active-faults-list{display:flex;flex-direction:column;gap:4px;}
+
+    /* ── Advanced Warning Modal ── */
+    #advancedWarningModal{display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);align-items:center;justify-content:center;}
+    #advancedWarningModal.visible{display:flex;}
+    .adv-warn-box{background:var(--card);border:1px solid rgba(255,159,67,0.4);border-radius:16px;padding:28px 32px;max-width:440px;text-align:center;}
+    .adv-warn-box h3{color:#ff9f43;margin:0 0 12px 0;font-size:17px;}
+    .adv-warn-box p{color:var(--muted);font-size:13px;line-height:1.6;margin:0 0 20px 0;}
+    .adv-warn-btns{display:flex;gap:10px;justify-content:center;}
+    .adv-warn-btns button{padding:10px 24px;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;border:1px solid transparent;}
+    .adv-warn-proceed{background:rgba(255,159,67,0.15);border-color:rgba(255,159,67,0.4)!important;color:#ff9f43;}
+    .adv-warn-proceed:hover{background:rgba(255,159,67,0.25);}
+    .adv-warn-cancel{background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.2)!important;color:var(--text);}
+    .adv-warn-cancel:hover{background:rgba(255,255,255,0.14);}
+
+    /* ── Frost Detection Settings Dropdown ── */
+    .fd-settings-toggle{display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;user-select:none;padding:0;}
+    .fd-settings-toggle:hover h4{color:#8ec8ff;}
+    .fd-settings-arrow{color:#64b4ff;font-size:12px;transition:transform 0.2s;}
+    .fd-settings-arrow.open{transform:rotate(180deg);}
+    #fdSettingsBody{display:none;margin-top:12px;}
+    #fdSettingsBody.open{display:block;}
+
     .wrap {
       position: relative;
       z-index: 1;
@@ -5588,6 +5622,12 @@ document.addEventListener("DOMContentLoaded", function() {
         <div class="clock-time" id="clockTime">—</div>
         <div class="clock-date" id="clockDate">—</div>
       </div>
+    </div>
+
+
+    <div id="faultBanner" onclick="showTab('Advanced');setTimeout(function(){showAdvancedSub('alarms');},100);">
+      &#9888; <span id="faultCount">0</span> ACTIVE FAULT(S) &mdash; <span id="faultSummary"></span>
+      <button id="faultDismiss" onclick="event.stopPropagation();_faultDismissed=true;this.parentElement.style.display='none';" title="Dismiss">&times;</button>
     </div>
 
     <div class="tabs-row">
@@ -6161,8 +6201,12 @@ document.addEventListener("DOMContentLoaded", function() {
           </div>
           
           <div class="card" style="margin-top:12px;">
-            <h4 style="margin:0 0 12px 0; color:#64b4ff; font-size:13px; font-weight:700;">DETECTION SETTINGS</h4>
-            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:12px;">
+            <div class="fd-settings-toggle" onclick="toggleFdSettings()">
+              <h4 style="margin:0; color:#64b4ff; font-size:13px; font-weight:700;">DETECTION SETTINGS</h4>
+              <span id="fdSettingsArrow" class="fd-settings-arrow">&#9660;</span>
+            </div>
+            <div id="fdSettingsBody">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:12px; margin-top:0;">
               <input type="hidden" id="fdRoiX" value="10">
               <input type="hidden" id="fdRoiY" value="10">
               <input type="hidden" id="fdRoiW" value="80">
@@ -6189,6 +6233,7 @@ document.addEventListener("DOMContentLoaded", function() {
               <button onclick="loadFrostDetect()" style="padding:6px 12px; background:#3a4a5a; color:#fff; border:none; border-radius:4px; font-weight:600; cursor:pointer; font-size:11px;">Reset</button>
               <button onclick="toggleRoiBox()" style="padding:6px 12px; background:#64b4ff; color:#000; border:none; border-radius:4px; font-weight:600; cursor:pointer; font-size:11px;">Edit ROI</button>
               <button onclick="addRoiBox()" style="padding:6px 12px; background:#2ee59d; color:#000; border:none; border-radius:4px; font-weight:600; cursor:pointer; font-size:11px;">+ Add ROI</button>
+            </div>
             </div>
           </div>
         </div>
@@ -7223,6 +7268,12 @@ document.addEventListener("DOMContentLoaded", function() {
 
       <!-- ALARMS SUB-TAB -->
       <div id="advancedSubAlarms" style="display:none;">
+
+        <div id="activeFaultsCard" class="active-faults-card" style="display:none;">
+          <h3>&#9888; Active Faults</h3>
+          <div id="activeFaultsList" class="active-faults-list"></div>
+        </div>
+
         <div class="card">
           <h3>Alarm Configuration</h3>
           <div class="small" style="margin-bottom:14px;">Configure alarm thresholds and email notifications</div>
@@ -10275,6 +10326,7 @@ function showHeatingSub(sub) {
       loadForecast(false),
       loadCost()
     ]);
+    evaluateFaults();
   }
 
   document.getElementById("hoursSel").addEventListener("change", () => refreshAll());
@@ -10303,6 +10355,182 @@ function showHeatingSub(sub) {
     try { await refreshAll(); }
     catch (e) { console.log("refresh error:", e); }
     finally { refreshBusy = false; }
+  }
+
+
+  // ═══════════════════════════════════════════════════════════════
+  // Fault Banner & Evaluation
+  // ═══════════════════════════════════════════════════════════════
+  var _alarmConfig = null;
+  var _faultDismissed = false;
+  var _lastStatus = null;
+
+  // Patch loadAlarmSettings to also cache config for evaluateFaults
+  var _origLoadAlarmSettings = loadAlarmSettings;
+
+  async function evaluateFaults(passedStatus) {
+    try {
+      var status;
+      if (passedStatus) {
+        status = passedStatus;
+      } else {
+        var statusRes = await fetch('/api/status', { cache: 'no-store' });
+        status = await statusRes.json();
+      }
+      var t = status.latest_trend || {};
+      var cfg = _alarmConfig || {};
+      var temp = cfg.temperature || {};
+      var hw = cfg.hardware || {};
+      var sys = cfg.system || {};
+      var faults = [];
+      var heatOn = t.heat_enabled === true;
+
+      // Temperature faults
+      var pfl = temp.pri_flow_low || {};
+      if (pfl.enabled && heatOn && t.pri_flow_c != null && t.pri_flow_c < (pfl.threshold || 15)) {
+        faults.push({ name: 'Pri Flow Low', value: t.pri_flow_c.toFixed(1) + '\u00b0C', detail: 'Below ' + (pfl.threshold || 15) + '\u00b0C threshold' });
+      }
+
+      var prh = temp.pri_return_high || {};
+      if (prh.enabled && t.pri_return_c != null && t.pri_return_c > (prh.threshold || 45)) {
+        faults.push({ name: 'Pri Return High', value: t.pri_return_c.toFixed(1) + '\u00b0C', detail: 'Above ' + (prh.threshold || 45) + '\u00b0C threshold' });
+      }
+
+      var pfz = temp.pitch_frozen || {};
+      if (pfz.enabled && t.avg_field_8cm_c != null && t.avg_field_8cm_c < (pfz.threshold || 1)) {
+        faults.push({ name: 'Pitch Frozen', value: t.avg_field_8cm_c.toFixed(1) + '\u00b0C', detail: 'Below ' + (pfz.threshold || 1) + '\u00b0C threshold' });
+      }
+
+      var sfnr = temp.sec_flow_not_reaching || {};
+      if (sfnr.enabled && heatOn && t.sec_flow_c != null && status.wish_temp != null) {
+        var target = status.wish_temp - (sfnr.offset || 3);
+        if (t.sec_flow_c < target) {
+          faults.push({ name: 'Sec Flow Not Reaching', value: t.sec_flow_c.toFixed(1) + '\u00b0C', detail: 'Below target ' + target.toFixed(1) + '\u00b0C' });
+        }
+      }
+
+      // Hardware faults (DI3-DI8)
+      var diMap = [
+        { di: 'di_3', key: 'p1a_fault', name: 'P1 Pump A Fault' },
+        { di: 'di_5', key: 'p1b_fault', name: 'P1 Pump B Fault' },
+        { di: 'di_6', key: 'p2a_fault', name: 'P2 Pump A Fault' },
+        { di: 'di_7', key: 'p2b_fault', name: 'P2 Pump B Fault' },
+        { di: 'di_4', key: 'high_limit', name: 'High Limit Trip' },
+        { di: 'di_8', key: 'pressure_fault', name: 'Pressure Fault' }
+      ];
+      diMap.forEach(function(d) {
+        if (hw[d.key] !== false && t[d.di] === true) {
+          faults.push({ name: d.name, value: 'ACTIVE', detail: 'Digital input fault' });
+        }
+      });
+
+      // System: Comm loss
+      var cl = sys.comm_loss || {};
+      if (cl.enabled !== false && t.ts) {
+        var ageS = (Date.now() - new Date(t.ts).getTime()) / 1000;
+        if (ageS > (cl.delay || 900)) {
+          faults.push({ name: 'Comm Loss', value: Math.round(ageS) + 's ago', detail: 'No data for ' + Math.round(ageS) + ' seconds' });
+        }
+      }
+
+      // System: Sensor fail
+      if (sys.sensor_fail !== false) {
+        if (t.pri_flow_c == null && heatOn) faults.push({ name: 'Sensor Fail', value: 'Pri Flow', detail: 'Primary flow sensor not reporting' });
+        if (t.pri_return_c == null && heatOn) faults.push({ name: 'Sensor Fail', value: 'Pri Return', detail: 'Primary return sensor not reporting' });
+        if (t.outside_temp_c == null) faults.push({ name: 'Sensor Fail', value: 'Outside Temp', detail: 'Outside temperature sensor not reporting' });
+      }
+
+      // Building protect
+      if (status.building_protect_active === true) {
+        faults.push({ name: 'Building Protect', value: 'ACTIVE', detail: 'Actuator closed - primary return too cold' });
+      }
+
+      renderFaults(faults);
+    } catch (e) {
+      console.error('evaluateFaults error:', e);
+    }
+  }
+
+  function renderFaults(faults) {
+    var banner = document.getElementById('faultBanner');
+    var countEl = document.getElementById('faultCount');
+    var summaryEl = document.getElementById('faultSummary');
+    var listCard = document.getElementById('activeFaultsCard');
+    var listBody = document.getElementById('activeFaultsList');
+
+    if (!banner) return;
+
+    if (faults.length === 0) {
+      banner.style.display = 'none';
+      if (listCard) listCard.style.display = 'none';
+      _faultDismissed = false;
+      return;
+    }
+
+    var prevCount = parseInt(countEl ? countEl.textContent : '0') || 0;
+    if (faults.length !== prevCount) _faultDismissed = false;
+    if (_faultDismissed) return;
+    banner.style.display = 'flex';
+    if (countEl) countEl.textContent = faults.length;
+    if (summaryEl) {
+      var names = [];
+      faults.forEach(function(f) { if (names.indexOf(f.name) === -1) names.push(f.name); });
+      summaryEl.textContent = names.slice(0, 3).join(', ') + (names.length > 3 ? '...' : '');
+    }
+
+    if (listCard) listCard.style.display = 'block';
+    if (listBody) {
+      listBody.innerHTML = faults.map(function(f, i) {
+        return '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:' +
+          (i % 2 ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.05)') +
+          ';border-radius:6px;">' +
+          '<span style="color:#ff6b6b;font-size:16px;">&#9888;</span>' +
+          '<div style="flex:1;">' +
+          '<div style="font-weight:600;color:#ff6b6b;font-size:13px;">' + f.name + '</div>' +
+          '<div style="color:var(--muted);font-size:11px;">' + f.detail + '</div>' +
+          '</div>' +
+          '<div style="font-family:var(--mono);font-size:13px;color:#fff;">' + f.value + '</div>' +
+          '</div>';
+      }).join('');
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Frost Detection Settings Toggle + Warning Modal
+  // ═══════════════════════════════════════════════════════════════
+  var _fdSettingsAccepted = false;
+
+  function toggleFdSettings() {
+    var body = document.getElementById('fdSettingsBody');
+    var arrow = document.getElementById('fdSettingsArrow');
+    if (!body) return;
+    if (body.classList.contains('open')) {
+      body.classList.remove('open');
+      if (arrow) arrow.classList.remove('open');
+    } else if (_fdSettingsAccepted) {
+      body.classList.add('open');
+      if (arrow) arrow.classList.add('open');
+    } else {
+      var modal = document.getElementById('advancedWarningModal');
+      if (modal) modal.classList.add('visible');
+      window._fdSettingsPending = true;
+    }
+  }
+
+  function acceptAdvancedWarning() {
+    _fdSettingsAccepted = true;
+    var modal = document.getElementById('advancedWarningModal');
+    if (modal) modal.classList.remove('visible');
+    if (window._fdSettingsPending) {
+      window._fdSettingsPending = false;
+      toggleFdSettings();
+    }
+  }
+
+  function cancelAdvancedWarning() {
+    var modal = document.getElementById('advancedWarningModal');
+    if (modal) modal.classList.remove('visible');
+    window._fdSettingsPending = false;
   }
 
   // ===== Heat Curve with Knee =====
@@ -11969,6 +12197,7 @@ function saveSmartPitchSettings() {
   function loadAlarmSettings() {
     fetch('/api/settings/alarms').then(r => r.json()).then(data => {
       const s = data.value || {};
+      _alarmConfig = s;
       const email = s.email || {};
       const temp = s.temperature || {};
       const hw = s.hardware || {};
@@ -12370,6 +12599,19 @@ function saveSmartPitchSettings() {
   requestAnimationFrame(draw);
 })();
 </script>
+
+
+<!-- Advanced Warning Modal -->
+<div id="advancedWarningModal">
+  <div class="adv-warn-box">
+    <h3>&#9888; Advanced Settings</h3>
+    <p>These settings control the frost detection system. Incorrect values may affect frost detection accuracy. Only change these if you understand their impact.</p>
+    <div class="adv-warn-btns">
+      <button class="adv-warn-proceed" onclick="acceptAdvancedWarning()">I Understand</button>
+      <button class="adv-warn-cancel" onclick="cancelAdvancedWarning()">Cancel</button>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
