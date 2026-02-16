@@ -8876,7 +8876,40 @@ function showHeatingSub(sub) {
   }
 
 
+  var _advancedAccepted = false;
+  var _lastTab = 'Dashboard';
+
+  function dismissAdvancedWarning(proceed) {
+    var modal = document.getElementById('advancedWarningModal');
+    if (modal) modal.classList.remove('visible');
+    if (proceed) {
+      if (window._fdSettingsPending) {
+        window._fdSettingsPending = false;
+        _fdSettingsAccepted = true;
+        var body = document.getElementById('fdSettingsBody');
+        var arrow = document.getElementById('fdSettingsArrow');
+        if (body) body.classList.add('open');
+        if (arrow) arrow.classList.add('open');
+      } else {
+        _advancedAccepted = true;
+        showTab('Advanced');
+      }
+    } else {
+      if (window._fdSettingsPending) {
+        window._fdSettingsPending = false;
+      } else {
+        showTab(_lastTab);
+      }
+    }
+  }
+
   function showTab(name){
+    if (name === 'Advanced' && !_advancedAccepted) {
+      var modal = document.getElementById('advancedWarningModal');
+      if (modal) modal.classList.add('visible');
+      return;
+    }
+    if (name !== 'Advanced') _lastTab = name;
     const tabs = ["Dashboard","Forecast","Schedule","Heating","Data","Energy","Advanced"];
     tabs.forEach(t=>{
       const p = document.getElementById("panel"+t);
@@ -8891,11 +8924,16 @@ function showHeatingSub(sub) {
       stopFrostStatusRefresh();
       stopSchematicRefresh();
     }
-    
+    if(name !== "Advanced") {
+      stopPLCRefresh();
+    }
+
     // Initialize Data tab content when shown
     if(name === "Data") {
       showDataSub(dataSub || 'trend');
     }
+
+    if(name === "Advanced") { updatePLCDisplay(); startPLCRefresh(); }
 
     // Initialize Energy tab content when shown
     if(name === "Energy") {
@@ -10517,21 +10555,7 @@ function showHeatingSub(sub) {
     }
   }
 
-  function acceptAdvancedWarning() {
-    _fdSettingsAccepted = true;
-    var modal = document.getElementById('advancedWarningModal');
-    if (modal) modal.classList.remove('visible');
-    if (window._fdSettingsPending) {
-      window._fdSettingsPending = false;
-      toggleFdSettings();
-    }
-  }
-
-  function cancelAdvancedWarning() {
-    var modal = document.getElementById('advancedWarningModal');
-    if (modal) modal.classList.remove('visible');
-    window._fdSettingsPending = false;
-  }
+  // acceptAdvancedWarning and cancelAdvancedWarning replaced by dismissAdvancedWarning(proceed) above
 
   // ===== Heat Curve with Knee =====
   let heatCurveChart = null;
@@ -12607,8 +12631,8 @@ function saveSmartPitchSettings() {
     <h3>&#9888; Advanced Settings</h3>
     <p>These settings control the frost detection system. Incorrect values may affect frost detection accuracy. Only change these if you understand their impact.</p>
     <div class="adv-warn-btns">
-      <button class="adv-warn-proceed" onclick="acceptAdvancedWarning()">I Understand</button>
-      <button class="adv-warn-cancel" onclick="cancelAdvancedWarning()">Cancel</button>
+      <button class="adv-warn-proceed" onclick="dismissAdvancedWarning(true)">I Understand</button>
+      <button class="adv-warn-cancel" onclick="dismissAdvancedWarning(false)">Cancel</button>
     </div>
   </div>
 </div>
