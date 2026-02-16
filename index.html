@@ -3772,7 +3772,7 @@ document.addEventListener("DOMContentLoaded", function() {
           smartpitch_submode: 'MONITOR',
           learning_match_info: {
             match: {
-              avg_pass_lead_hours: 40.1,
+              avg_pass_lead_hours: 8,
               optimal_wish_temp: 15.2,
               sessions: 18,
               total_sessions: 18,
@@ -3812,8 +3812,8 @@ document.addEventListener("DOMContentLoaded", function() {
             hours_until: 18
           },
           recommendation: {
-            lead_hours: 40.1,
-            wish_temp: 22.5,
+            lead_hours: 8,
+            wish_temp: 15.2,
             tier: 'TIER4_1BAND',
             band: 'T-4..-2',
             soil_band: 'MODERATE',
@@ -3823,24 +3823,24 @@ document.addEventListener("DOMContentLoaded", function() {
           matches: { exact: 5, band3: 8, band2: 14, band1: 19, global: 32 },
           forecast_match: {
             forecast_bands: {
-              temp_band: 'T-2..0',
+              temp_band: 'T0..2',
               cloud_band: 'C>85',
               humidity_band: 'H>80',
-              wind_band: 'W5..8'
+              wind_band: 'W>8'
             },
             match: {
-              match_tier: 'TIER2_3BAND',
-              total_sessions: 8,
-              passes: 7,
-              fails: 1,
-              pass_rate: 87.5,
-              avg_pass_lead_hours: 18.2,
-              avg_pass_wish_temp: 21.4,
-              avg_pass_energy_kwh: null,
-              temp_band: 'T-2..0',
+              match_tier: 'TIER1_EXACT',
+              total_sessions: 18,
+              passes: 18,
+              fails: 0,
+              pass_rate: 100,
+              avg_pass_lead_hours: 8,
+              avg_pass_wish_temp: 15.2,
+              avg_pass_energy_kwh: 186,
+              temp_band: 'T0..2',
               cloud_band: 'C>85',
               humidity_band: 'H>80',
-              wind_band: 'W5..8'
+              wind_band: 'W>8'
             }
           }
         },
@@ -3849,6 +3849,7 @@ document.addEventListener("DOMContentLoaded", function() {
             session_num: 1,
             session_name: 'First Team Training',
             deadline: deadlineIso,
+            playable_by: deadlineIso,
             min_temp_c: -1.5,
             min_feels_c: -3.2,
             frost_risk: true
