@@ -175,7 +175,7 @@
     #soil, #slope, #camera,
     #protection, #lookahead,
     #settings, #gui, #database,
-    #scenarios, #troubleshooting, #architecture {
+    #scenarios, #troubleshooting, #architecture, #security {
       page-break-before: always;
       break-before: page;
     }
@@ -276,6 +276,7 @@
     <a href="#scenarios"><span class="num">19</span> Scenarios</a>
     <a href="#troubleshooting"><span class="num">20</span> Troubleshooting</a>
     <a href="#architecture"><span class="num">21</span> Architecture</a>
+    <a href="#security"><span class="num">22</span> Security</a>
   </div>
 </div>
 
@@ -762,11 +763,26 @@
   <div class="steps">
     <div class="step"><div class="step-num">1</div><div class="step-title">Capture</div><div class="step-desc">Camera takes periodic snapshots of pitch surface</div></div>
     <div class="step-arrow">&rarr;</div>
-    <div class="step"><div class="step-num">2</div><div class="step-title">Analyse</div><div class="step-desc">Compares saturation and brightness against thresholds</div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-title">Analyse</div><div class="step-desc">Counts green pixels in each ROI using HSV hue and saturation</div></div>
     <div class="step-arrow">&rarr;</div>
-    <div class="step"><div class="step-num">3</div><div class="step-title">Confirm</div><div class="step-desc">Multiple frames required before changing frost state</div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-title">Confirm</div><div class="step-desc">Multiple frames must agree before changing frost state</div></div>
     <div class="step-arrow">&rarr;</div>
     <div class="step"><div class="step-num">4</div><div class="step-title">Record</div><div class="step-desc">Result feeds into leaf_frost boolean and session pass/fail</div></div>
+  </div>
+
+  <h3>Green Pixel Ratio Algorithm</h3>
+  <p>Rather than averaging saturation across the whole image (which is fragile against shadows and overcast), SmartPitch counts individual <strong>green pixels</strong>:</p>
+  <ol>
+    <li>Convert each ROI to HSV colour space (OpenCV: H 0&ndash;180, S 0&ndash;255, V 0&ndash;255)</li>
+    <li>A pixel is classified as "green grass" if its <strong>hue is 30&ndash;85</strong> (green range) <strong>AND</strong> saturation exceeds the saturation floor (default 15)</li>
+    <li>Calculate <code>green_ratio = green_pixels / total_pixels</code></li>
+    <li>If <code>green_ratio &lt; green_threshold</code> (default 25%) &rarr; frost detected for that ROI</li>
+    <li>Majority voting across all ROIs determines the frame-level result</li>
+  </ol>
+
+  <div class="callout callout-green">
+    <h4>Shadow Resistant</h4>
+    <p>This approach is inherently resistant to shadows and overcast conditions. Shadows reduce <em>brightness</em> but the grass retains its green <em>hue</em> &mdash; so shadowed pixels still count as green. Only frost genuinely removes green from the pitch, making the detection far more reliable than a simple saturation average.</p>
   </div>
 
   <h3>Settings</h3>
@@ -774,11 +790,12 @@
     <table>
       <thead><tr><th>Setting</th><th>Default</th><th>Description</th></tr></thead>
       <tbody>
-        <tr><td>Saturation Threshold</td><td>40</td><td>Below this = possible frost (frost appears desaturated)</td></tr>
-        <tr><td>Sample Interval</td><td>2s</td><td>How often to capture and analyse</td></tr>
-        <tr><td>Smoothing Frames</td><td>10</td><td>Frames averaged before detection</td></tr>
-        <tr><td>State Change Delay</td><td>30s</td><td>Delay before confirming a frost state change</td></tr>
-        <tr><td>ROI Regions</td><td>Configurable</td><td>Rectangles on the image focusing on specific pitch areas</td></tr>
+        <tr><td>Saturation Floor</td><td>15</td><td>Minimum colour intensity for a pixel to count as grass (frost/grey falls below this)</td></tr>
+        <tr><td>Green Threshold</td><td>25%</td><td>Minimum percentage of green pixels for the pitch to be considered clear</td></tr>
+        <tr><td>Sample Interval</td><td>2s</td><td>How often to capture and analyse a frame</td></tr>
+        <tr><td>Smoothing Frames</td><td>10</td><td>Number of frames averaged to reduce noise &mdash; higher is more stable but slower to react</td></tr>
+        <tr><td>State Change Delay</td><td>30s</td><td>Seconds a state must hold before confirming frost or clear &mdash; prevents flicker</td></tr>
+        <tr><td>ROI Regions</td><td>Configurable</td><td>Rectangles on the image focusing on specific pitch areas, with rotation support</td></tr>
       </tbody>
     </table>
   </div>
@@ -846,14 +863,42 @@
     <div class="step-arrow">&rarr;</div>
     <div class="step"><div class="step-num">2</div><div class="step-title">Check Next</div><div class="step-desc">Is another session &lt; 48h away with frost risk?</div></div>
     <div class="step-arrow">&rarr;</div>
-    <div class="step"><div class="step-num">3</div><div class="step-title">Maintain</div><div class="step-desc">Hold pitch at gentle 14&deg;C</div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-title">Gap Learning</div><div class="step-desc">Query historical gap data for this weather band</div></div>
     <div class="step-arrow">&rarr;</div>
-    <div class="step"><div class="step-num">4</div><div class="step-title">Ramp Up</div><div class="step-desc">When next session window begins, increase as needed</div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-title">Maintain</div><div class="step-desc">Hold pitch at learned setpoint or heat curve default</div></div>
+    <div class="step-arrow">&rarr;</div>
+    <div class="step"><div class="step-num">5</div><div class="step-title">Ramp Up</div><div class="step-desc">When next session window begins, increase as needed</div></div>
+  </div>
+
+  <h3>Gap Learning System</h3>
+  <p>Rather than always maintaining at a fixed temperature, SmartPitch <strong>learns from previous gaps between sessions</strong> to find the minimum maintain setpoint that keeps the soil above a safe threshold.</p>
+
+  <p>Each completed session records:</p>
+  <ul>
+    <li><strong>End soil temperatures</strong> (8cm and 25cm) &mdash; auto-filled by a database trigger when the session end time is set</li>
+    <li><strong>Maintain strategy and setpoint</strong> used during the gap</li>
+    <li><strong>Gap hours</strong> from the previous session&rsquo;s end</li>
+    <li><strong>Minimum soil temperature</strong> observed during the gap period</li>
+  </ul>
+
+  <p>This data is aggregated by the <code>gap_learning</code> database view, grouped by <code>(temp_band, soil_start_band)</code>, providing average minimum soil temperatures and pass rates for each combination.</p>
+
+  <h4>Tiered Fallback for Maintain Decisions</h4>
+  <p>When deciding the maintain setpoint, the system uses the same tiered approach as the learning system:</p>
+  <ol>
+    <li><strong>Band match</strong> &mdash; find gap learning data matching the current temperature band and soil start band</li>
+    <li><strong>Global average</strong> &mdash; if no band-specific data, use overall gap averages</li>
+    <li><strong>Heat curve default</strong> &mdash; if no gap data exists at all, fall back to the heat curve setpoint (conservative)</li>
+  </ol>
+
+  <div class="callout callout-green">
+    <h4>Confidence Buffer</h4>
+    <p>When gap learning data exists but sessions are few, a confidence buffer is applied to the minimum safe soil temperature: <strong>+1&deg;C with 3 sessions</strong>, tapering to <strong>+0&deg;C at 10+ sessions</strong>. This ensures the system is conservative when data is limited and relaxes as confidence grows.</p>
   </div>
 
   <div class="callout callout-green">
     <h4>Energy Savings</h4>
-    <p>Maintaining a gentle 14&deg;C uses significantly less energy than a full cool-down and reheat cycle. The pitch retains thermal mass, so the ramp-up for the next session is faster and cheaper.</p>
+    <p>With gap learning, the maintain setpoint is often lower than the heat curve default &mdash; the system has evidence that the soil stays warm enough without aggressive heating. This saves significant energy compared to a fixed maintain temperature, while the confidence buffer ensures safety until enough data has been collected.</p>
   </div>
 
   <p>If the next session is more than 48 hours away, the system returns to MONITOR and will restart heating based on learning recommendations when the time comes.</p>
@@ -1515,7 +1560,7 @@ try {
   </div>
 
   <h3>Node-RED Flow Structure</h3>
-  <p>The system comprises <strong>~301 nodes</strong> across <strong>5 tabs</strong>:</p>
+  <p>The system comprises <strong>~303 nodes</strong> across <strong>5 tabs</strong>:</p>
   <div class="table-wrap">
     <table>
       <thead><tr><th>Tab</th><th>Purpose</th></tr></thead>
@@ -1558,10 +1603,68 @@ try {
   </div>
 
   <div class="stats">
-    <div class="stat"><div class="stat-val">~301</div><div class="stat-label">Nodes</div></div>
+    <div class="stat"><div class="stat-val">~303</div><div class="stat-label">Nodes</div></div>
     <div class="stat"><div class="stat-val">5</div><div class="stat-label">Tabs</div></div>
     <div class="stat"><div class="stat-val">30+</div><div class="stat-label">SQL CTEs</div></div>
     <div class="stat"><div class="stat-val">~9ms</div><div class="stat-label">Query Time</div></div>
+  </div>
+</div>
+
+
+<!-- ========================================================================== -->
+<!--  SECTION 22 : SECURITY                                                    -->
+<!-- ========================================================================== -->
+<div class="section" id="security">
+  <div class="section-header">
+    <div class="section-num">22</div>
+    <div class="section-title">Security</div>
+    <h2>Authentication &amp; Access Control</h2>
+  </div>
+
+  <p>SmartPitch implements multi-layer authentication to protect both the Node-RED editor and the operational GUI/API endpoints.</p>
+
+  <h3>Authentication Layers</h3>
+  <div class="card-grid cols-2">
+    <div class="card">
+      <h4>Editor Login (adminAuth)</h4>
+      <p>The Node-RED flow editor requires username and password authentication via the built-in <code>adminAuth</code> mechanism. Passwords are stored as bcrypt hashes in <code>settings.js</code>. This prevents unauthorised modification of the control logic.</p>
+    </div>
+    <div class="card">
+      <h4>GUI &amp; API Login</h4>
+      <p>All operational endpoints (<code>/gui</code>, <code>/api/*</code>) are protected by a custom Express middleware that supports two authentication methods: HTTP Basic Auth for API clients and session cookies for browser users.</p>
+    </div>
+  </div>
+
+  <h3>Session-Based Authentication</h3>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-title">Login</div><div class="step-desc">User submits credentials on the styled login page</div></div>
+    <div class="step-arrow">&rarr;</div>
+    <div class="step"><div class="step-num">2</div><div class="step-title">Verify</div><div class="step-desc">Password checked against bcrypt hash via Basic Auth header</div></div>
+    <div class="step-arrow">&rarr;</div>
+    <div class="step"><div class="step-num">3</div><div class="step-title">Session</div><div class="step-desc">Secure 64-byte session token issued as cookie (7-day expiry)</div></div>
+    <div class="step-arrow">&rarr;</div>
+    <div class="step"><div class="step-num">4</div><div class="step-title">Access</div><div class="step-desc">Subsequent requests authenticated via session cookie</div></div>
+  </div>
+
+  <h3>Security Measures</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Measure</th><th>Implementation</th></tr></thead>
+      <tbody>
+        <tr><td>Editor Authentication</td><td><code>adminAuth</code> with bcrypt-hashed passwords in <code>settings.js</code></td></tr>
+        <tr><td>API Authentication</td><td>Custom <code>httpNodeMiddleware</code> with Basic Auth + session cookie support</td></tr>
+        <tr><td>Credential Encryption</td><td><code>credentialSecret</code> set to encrypt any credentials stored in Node-RED flows</td></tr>
+        <tr><td>Database Password</td><td>Stored as environment variable (<code>PGPASSWORD</code>) rather than plaintext in flows</td></tr>
+        <tr><td>Diagnostics Endpoint</td><td>Disabled to prevent information disclosure via <code>/diagnostics</code></td></tr>
+        <tr><td>Session Management</td><td>In-memory session store with automatic hourly cleanup of expired tokens</td></tr>
+        <tr><td>Static Files</td><td>Public assets (HTML, CSS, JS, images) bypass auth to allow the login page to load</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout callout-amber">
+    <h4>Network Considerations</h4>
+    <p>HTTPS is not implemented directly on the Node-RED instance. On an isolated local network this is acceptable, but for internet-facing deployments a reverse proxy (e.g. nginx with Let&rsquo;s Encrypt) should be placed in front of the system to provide TLS encryption.</p>
   </div>
 </div>
 
@@ -1569,7 +1672,7 @@ try {
 <hr class="divider">
 <div class="footer">
   <span>SmartPitch</span> &mdash; Intelligent Pitch Frost Protection &amp; Heating System<br>
-  Technical Documentation &bull; Updated 16 February 2026 &bull; v3.0
+  Technical Documentation &bull; Updated 17 February 2026 &bull; v3.1
 </div>
 
 </div><!-- /container -->

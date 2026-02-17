@@ -6213,14 +6213,15 @@ document.addEventListener("DOMContentLoaded", function() {
               <input type="hidden" id="fdRoiH" value="80">
               <div>
                 <div class="subtleTitle" style="margin-bottom:6px; font-size:10px;">Thresholds</div>
-                <div><label style="color:#9fb0d7; font-size:9px;">Saturation (below=frost)</label><input type="number" id="fdSatTh" min="0" max="255" value="40" style="width:100%; padding:4px; border-radius:3px; border:1px solid #3a4a5a; background:#1a2530; color:#fff; font-size:11px; margin-bottom:4px;"></div>
+                <div><label style="color:#9fb0d7; font-size:9px;">Saturation Floor</label><input type="number" id="fdSatTh" min="0" max="255" value="40" style="width:100%; padding:4px; border-radius:3px; border:1px solid #3a4a5a; background:#1a2530; color:#fff; font-size:11px; margin-bottom:2px;"><div style="color:#5a7a9a; font-size:8px; margin-bottom:6px; line-height:1.3;">Min colour intensity for a pixel to count as grass. Frost/grey pixels fall below this. Default 15.</div></div>
+                <div><label style="color:#9fb0d7; font-size:9px;">Green Threshold (%)</label><input type="number" id="fdGreenTh" min="1" max="100" step="1" value="25" style="width:100%; padding:4px; border-radius:3px; border:1px solid #3a4a5a; background:#1a2530; color:#fff; font-size:11px; margin-bottom:2px;"><div style="color:#5a7a9a; font-size:8px; margin-bottom:6px; line-height:1.3;">Minimum % of pitch that must be green to be "clear". Below this = frost detected. Default 25%.</div></div>
                 <div style="display:none;"><label style="color:#9fb0d7; font-size:9px;">Brightness (above=frost)</label><input type="number" id="fdBrightTh" min="0" max="255" value="150" style="width:100%; padding:4px; border-radius:3px; border:1px solid #3a4a5a; background:#1a2530; color:#fff; font-size:11px;"></div>
               </div>
               <div>
                 <div class="subtleTitle" style="margin-bottom:6px; font-size:10px;">Timing</div>
-                <div><label style="color:#9fb0d7; font-size:9px;">Sample Interval (s)</label><input type="number" id="fdSampleInt" min="1" max="30" value="2" style="width:100%; padding:4px; border-radius:3px; border:1px solid #3a4a5a; background:#1a2530; color:#fff; font-size:11px; margin-bottom:4px;"></div>
-                <div><label style="color:#9fb0d7; font-size:9px;">Smoothing (frames)</label><input type="number" id="fdSmooth" min="1" max="60" value="10" style="width:100%; padding:4px; border-radius:3px; border:1px solid #3a4a5a; background:#1a2530; color:#fff; font-size:11px; margin-bottom:4px;"></div>
-                <div><label style="color:#9fb0d7; font-size:9px;">Change Delay (s)</label><input type="number" id="fdDelay" min="5" max="300" value="30" style="width:100%; padding:4px; border-radius:3px; border:1px solid #3a4a5a; background:#1a2530; color:#fff; font-size:11px;"></div>
+                <div><label style="color:#9fb0d7; font-size:9px;">Sample Interval (s)</label><input type="number" id="fdSampleInt" min="1" max="30" value="2" style="width:100%; padding:4px; border-radius:3px; border:1px solid #3a4a5a; background:#1a2530; color:#fff; font-size:11px; margin-bottom:2px;"><div style="color:#5a7a9a; font-size:8px; margin-bottom:6px; line-height:1.3;">How often the camera takes a snapshot. Default 2s.</div></div>
+                <div><label style="color:#9fb0d7; font-size:9px;">Smoothing (frames)</label><input type="number" id="fdSmooth" min="1" max="60" value="10" style="width:100%; padding:4px; border-radius:3px; border:1px solid #3a4a5a; background:#1a2530; color:#fff; font-size:11px; margin-bottom:2px;"><div style="color:#5a7a9a; font-size:8px; margin-bottom:6px; line-height:1.3;">Number of frames averaged to reduce noise. Higher = more stable, slower to react. Default 10.</div></div>
+                <div><label style="color:#9fb0d7; font-size:9px;">Change Delay (s)</label><input type="number" id="fdDelay" min="5" max="300" value="30" style="width:100%; padding:4px; border-radius:3px; border:1px solid #3a4a5a; background:#1a2530; color:#fff; font-size:11px; margin-bottom:2px;"><div style="color:#5a7a9a; font-size:8px; margin-bottom:6px; line-height:1.3;">Seconds a state must hold before confirming frost/clear. Prevents flicker. Default 30s.</div></div>
               </div>
               <div>
                 <div class="subtleTitle" style="display:none; margin-bottom:6px; font-size:10px;">Options</div>
@@ -7268,150 +7269,180 @@ document.addEventListener("DOMContentLoaded", function() {
 
       <!-- ALARMS SUB-TAB -->
       <div id="advancedSubAlarms" style="display:none;">
-
         <div id="activeFaultsCard" class="active-faults-card" style="display:none;">
           <h3>&#9888; Active Faults</h3>
           <div id="activeFaultsList" class="active-faults-list"></div>
         </div>
 
         <div class="card">
-          <h3>Alarm Configuration</h3>
-          <div class="small" style="margin-bottom:14px;">Configure alarm thresholds and email notifications</div>
-          
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px;">
-            <!-- Email Settings -->
-            <div style="background:rgba(0,0,0,0.2); border-radius:12px; padding:16px;">
-              <div style="color:#7aa7ff; font-weight:700; font-size:12px; margin-bottom:12px;">EMAIL NOTIFICATIONS</div>
-              <div style="display:flex; flex-direction:column; gap:8px;">
-                <div style="display:flex; align-items:center; gap:8px;">
-                  <label style="width:100px; font-size:12px;">SMTP Server</label>
-                  <input type="text" id="alarmSmtpServer" placeholder="smtp.gmail.com" style="flex:1; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); border-radius:6px; color:#fff;">
+          <h3 style="margin-bottom:16px;">Alarm Configuration</h3>
+
+          <div style="display:flex; gap:4px; margin-bottom:20px; border-bottom:2px solid rgba(255,255,255,0.06); padding-bottom:0;">
+            <button class="alarmSubBtn active" id="almTabThresholds" onclick="showAlarmSub('thresholds')" style="padding:8px 16px; background:none; border:none; border-bottom:2px solid #2ee59d; color:#2ee59d; font-size:13px; font-weight:700; cursor:pointer; margin-bottom:-2px;">Thresholds</button>
+            <button class="alarmSubBtn" id="almTabProtection" onclick="showAlarmSub('protection')" style="padding:8px 16px; background:none; border:none; border-bottom:2px solid transparent; color:#7a8a9a; font-size:13px; font-weight:700; cursor:pointer; margin-bottom:-2px;">Protection</button>
+            <button class="alarmSubBtn" id="almTabWatchdog" onclick="showAlarmSub('watchdog')" style="padding:8px 16px; background:none; border:none; border-bottom:2px solid transparent; color:#7a8a9a; font-size:13px; font-weight:700; cursor:pointer; margin-bottom:-2px;">Watchdog</button>
+            <button class="alarmSubBtn" id="almTabEmail" onclick="showAlarmSub('email')" style="padding:8px 16px; background:none; border:none; border-bottom:2px solid transparent; color:#7a8a9a; font-size:13px; font-weight:700; cursor:pointer; margin-bottom:-2px;">Email</button>
+          </div>
+
+          <div id="almPanelThresholds" style="display:block;">
+            <div style="margin-bottom:24px;">
+              <div style="color:#ffd166; font-weight:800; font-size:15px; margin-bottom:6px;">Temperature Alarms</div>
+              <div style="color:#8a9ab0; font-size:12px; margin-bottom:16px;">Email alert when a temperature crosses the threshold for the set duration.</div>
+              <div style="display:flex; flex-direction:column; gap:14px;">
+                <div style="background:rgba(0,0,0,0.15); border-radius:10px; padding:14px 16px; border-left:3px solid #ffd166;">
+                  <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <input type="checkbox" id="alarmPriFlowLowEnabled" style="width:18px; height:18px; flex-shrink:0;">
+                    <div style="flex:1; min-width:180px;"><div style="color:#fff; font-size:14px; font-weight:600;">Primary Flow Low</div><div style="color:#7a8a9a; font-size:11px; margin-top:2px;">Alert if primary flow drops below threshold while heating</div></div>
+                    <div style="display:flex; align-items:center; gap:12px; flex-shrink:0;">
+                      <div style="text-align:center;"><div style="color:#7a8a9a; font-size:9px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:3px;">Threshold</div><div style="display:flex; align-items:center; gap:4px;"><input type="number" id="alarmPriFlowLowThreshold" value="15" style="width:55px; padding:6px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#fff; text-align:center; font-size:13px; font-weight:600;"><span style="color:#7a8a9a; font-size:12px;">°C</span></div></div>
+                      <div style="text-align:center;"><div style="color:#7a8a9a; font-size:9px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:3px;">Delay</div><div style="display:flex; align-items:center; gap:4px;"><input type="number" id="alarmPriFlowLowDelay" value="60" style="width:55px; padding:6px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#fff; text-align:center; font-size:13px; font-weight:600;"><span style="color:#7a8a9a; font-size:12px;">sec</span></div></div>
+                    </div>
+                  </div>
                 </div>
-                <div style="display:flex; align-items:center; gap:8px;">
-                  <label style="width:100px; font-size:12px;">SMTP Port</label>
-                  <input type="number" id="alarmSmtpPort" value="587" style="width:80px; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); border-radius:6px; color:#fff;">
+                <div style="background:rgba(0,0,0,0.15); border-radius:10px; padding:14px 16px; border-left:3px solid #ffd166;">
+                  <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <input type="checkbox" id="alarmPriReturnHighEnabled" style="width:18px; height:18px; flex-shrink:0;">
+                    <div style="flex:1; min-width:180px;"><div style="color:#fff; font-size:14px; font-weight:600;">Primary Return High</div><div style="color:#7a8a9a; font-size:11px; margin-top:2px;">Alert if return temp exceeds threshold (overheating risk)</div></div>
+                    <div style="display:flex; align-items:center; gap:12px; flex-shrink:0;">
+                      <div style="text-align:center;"><div style="color:#7a8a9a; font-size:9px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:3px;">Threshold</div><div style="display:flex; align-items:center; gap:4px;"><input type="number" id="alarmPriReturnHighThreshold" value="45" style="width:55px; padding:6px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#fff; text-align:center; font-size:13px; font-weight:600;"><span style="color:#7a8a9a; font-size:12px;">°C</span></div></div>
+                      <div style="text-align:center;"><div style="color:#7a8a9a; font-size:9px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:3px;">Delay</div><div style="display:flex; align-items:center; gap:4px;"><input type="number" id="alarmPriReturnHighDelay" value="60" style="width:55px; padding:6px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#fff; text-align:center; font-size:13px; font-weight:600;"><span style="color:#7a8a9a; font-size:12px;">sec</span></div></div>
+                    </div>
+                  </div>
                 </div>
-                <div style="display:flex; align-items:center; gap:8px;">
-                  <label style="width:100px; font-size:12px;">Username</label>
-                  <input type="text" id="alarmSmtpUser" placeholder="email@example.com" style="flex:1; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); border-radius:6px; color:#fff;">
+                <div style="background:rgba(0,0,0,0.15); border-radius:10px; padding:14px 16px; border-left:3px solid #ffd166;">
+                  <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <input type="checkbox" id="alarmPitchFrozenEnabled" style="width:18px; height:18px; flex-shrink:0;">
+                    <div style="flex:1; min-width:180px;"><div style="color:#fff; font-size:14px; font-weight:600;">Pitch Frozen</div><div style="color:#7a8a9a; font-size:11px; margin-top:2px;">Alert if soil temperature drops below threshold</div></div>
+                    <div style="display:flex; align-items:center; gap:12px; flex-shrink:0;">
+                      <div style="text-align:center;"><div style="color:#7a8a9a; font-size:9px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:3px;">Threshold</div><div style="display:flex; align-items:center; gap:4px;"><input type="number" id="alarmPitchFrozenThreshold" value="1" style="width:55px; padding:6px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#fff; text-align:center; font-size:13px; font-weight:600;"><span style="color:#7a8a9a; font-size:12px;">°C</span></div></div>
+                      <div style="text-align:center;"><div style="color:#7a8a9a; font-size:9px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:3px;">Delay</div><div style="display:flex; align-items:center; gap:4px;"><input type="number" id="alarmPitchFrozenDelay" value="300" style="width:55px; padding:6px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#fff; text-align:center; font-size:13px; font-weight:600;"><span style="color:#7a8a9a; font-size:12px;">sec</span></div></div>
+                    </div>
+                  </div>
                 </div>
-                <div style="display:flex; align-items:center; gap:8px;">
-                  <label style="width:100px; font-size:12px;">Password</label>
-                  <input type="password" id="alarmSmtpPass" style="flex:1; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); border-radius:6px; color:#fff;">
-                </div>
-                <div style="display:flex; align-items:center; gap:8px;">
-                  <label style="width:100px; font-size:12px;">From</label>
-                  <input type="email" id="alarmFromEmail" placeholder="alerts@smartpitch.com" style="flex:1; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); border-radius:6px; color:#fff;">
-                </div>
-                <div style="display:flex; align-items:center; gap:8px;">
-                  <label style="width:100px; font-size:12px;">To</label>
-                  <input type="email" id="alarmToEmail" placeholder="operator@example.com" style="flex:1; padding:6px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); border-radius:6px; color:#fff;">
-                </div>
-                <button class="btn" onclick="testAlarmEmail()" style="margin-top:8px; background:#3a4a5a;">Test Email</button>
-              </div>
-            </div>
-            
-            <!-- Temperature Alarms -->
-            <div style="background:rgba(0,0,0,0.2); border-radius:12px; padding:16px;">
-              <div style="color:#ffd166; font-weight:700; font-size:12px; margin-bottom:12px;">TEMPERATURE ALARMS</div>
-              <div style="display:flex; flex-direction:column; gap:10px;">
-                <div style="display:flex; align-items:center; gap:8px;">
-                  <input type="checkbox" id="alarmPriFlowLowEnabled">
-                  <label style="flex:1; font-size:12px;">Primary Flow Low</label>
-                  <input type="number" id="alarmPriFlowLowThreshold" value="15" style="width:50px; padding:4px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); border-radius:4px; color:#fff; text-align:center;">
-                  <span style="font-size:11px;">°C</span>
-                  <input type="number" id="alarmPriFlowLowDelay" value="60" style="width:50px; padding:4px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); border-radius:4px; color:#fff; text-align:center;">
-                  <span style="font-size:11px;">sec</span>
-                </div>
-                <div style="display:flex; align-items:center; gap:8px;">
-                  <input type="checkbox" id="alarmPriReturnHighEnabled">
-                  <label style="flex:1; font-size:12px;">Primary Return High</label>
-                  <input type="number" id="alarmPriReturnHighThreshold" value="45" style="width:50px; padding:4px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); border-radius:4px; color:#fff; text-align:center;">
-                  <span style="font-size:11px;">°C</span>
-                  <input type="number" id="alarmPriReturnHighDelay" value="60" style="width:50px; padding:4px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); border-radius:4px; color:#fff; text-align:center;">
-                  <span style="font-size:11px;">sec</span>
-                </div>
-                <div style="display:flex; align-items:center; gap:8px;">
-                  <input type="checkbox" id="alarmPitchFrozenEnabled">
-                  <label style="flex:1; font-size:12px;">Pitch Frozen</label>
-                  <input type="number" id="alarmPitchFrozenThreshold" value="1" style="width:50px; padding:4px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); border-radius:4px; color:#fff; text-align:center;">
-                  <span style="font-size:11px;">°C</span>
-                  <input type="number" id="alarmPitchFrozenDelay" value="300" style="width:50px; padding:4px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); border-radius:4px; color:#fff; text-align:center;">
-                  <span style="font-size:11px;">sec</span>
-                </div>
-                <div style="display:flex; align-items:center; gap:8px;">
-                  <input type="checkbox" id="alarmSecFlowNotReachingEnabled">
-                  <label style="flex:1; font-size:12px;">Sec. Flow Not Reaching Setpoint</label>
-                  <input type="number" id="alarmSecFlowNotReachingOffset" value="3" style="width:50px; padding:4px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); border-radius:4px; color:#fff; text-align:center;">
-                  <span style="font-size:11px;">°C</span>
-                  <input type="number" id="alarmSecFlowNotReachingDelay" value="900" style="width:50px; padding:4px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); border-radius:4px; color:#fff; text-align:center;">
-                  <span style="font-size:11px;">sec</span>
+                <div style="background:rgba(0,0,0,0.15); border-radius:10px; padding:14px 16px; border-left:3px solid #ffd166;">
+                  <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <input type="checkbox" id="alarmSecFlowNotReachingEnabled" style="width:18px; height:18px; flex-shrink:0;">
+                    <div style="flex:1; min-width:180px;"><div style="color:#fff; font-size:14px; font-weight:600;">Flow Not Reaching Setpoint</div><div style="color:#7a8a9a; font-size:11px; margin-top:2px;">Alert if secondary flow stays below setpoint by this offset</div></div>
+                    <div style="display:flex; align-items:center; gap:12px; flex-shrink:0;">
+                      <div style="text-align:center;"><div style="color:#7a8a9a; font-size:9px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:3px;">Offset</div><div style="display:flex; align-items:center; gap:4px;"><input type="number" id="alarmSecFlowNotReachingOffset" value="3" style="width:55px; padding:6px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#fff; text-align:center; font-size:13px; font-weight:600;"><span style="color:#7a8a9a; font-size:12px;">°C</span></div></div>
+                      <div style="text-align:center;"><div style="color:#7a8a9a; font-size:9px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:3px;">Delay</div><div style="display:flex; align-items:center; gap:4px;"><input type="number" id="alarmSecFlowNotReachingDelay" value="900" style="width:55px; padding:6px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#fff; text-align:center; font-size:13px; font-weight:600;"><span style="color:#7a8a9a; font-size:12px;">sec</span></div></div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-            
-            <!-- Hardware Alarms -->
-            <div style="background:rgba(0,0,0,0.2); border-radius:12px; padding:16px;">
-              <div style="color:#ff6b6b; font-weight:700; font-size:12px; margin-bottom:12px;">HARDWARE ALARMS</div>
-              <div style="display:flex; flex-direction:column; gap:8px;">
-                <label style="display:flex; align-items:center; gap:8px; font-size:12px;"><input type="checkbox" id="alarmP1AFaultEnabled" checked> Pump 1A Fault</label>
-                <label style="display:flex; align-items:center; gap:8px; font-size:12px;"><input type="checkbox" id="alarmP1BFaultEnabled" checked> Pump 1B Fault</label>
-                <label style="display:flex; align-items:center; gap:8px; font-size:12px;"><input type="checkbox" id="alarmP2AFaultEnabled" checked> Pump 2A Fault</label>
-                <label style="display:flex; align-items:center; gap:8px; font-size:12px;"><input type="checkbox" id="alarmP2BFaultEnabled" checked> Pump 2B Fault</label>
-                <label style="display:flex; align-items:center; gap:8px; font-size:12px;"><input type="checkbox" id="alarmHighLimitEnabled" checked> High Limit Trip</label>
+            <div>
+              <div style="color:#ff6b6b; font-weight:800; font-size:15px; margin-bottom:6px;">Hardware Alarms</div>
+              <div style="color:#8a9ab0; font-size:12px; margin-bottom:16px;">Digital input faults from PLC. Email sent when fault is detected.</div>
+              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px;">
+                <label style="display:flex; align-items:center; gap:10px; background:rgba(0,0,0,0.15); border-radius:10px; padding:12px 16px; border-left:3px solid #ff6b6b; cursor:pointer;"><input type="checkbox" id="alarmP1AFaultEnabled" checked style="width:18px; height:18px;"><span style="color:#fff; font-size:13px; font-weight:600;">Pitch 1 Pump A Fault</span></label>
+                <label style="display:flex; align-items:center; gap:10px; background:rgba(0,0,0,0.15); border-radius:10px; padding:12px 16px; border-left:3px solid #ff6b6b; cursor:pointer;"><input type="checkbox" id="alarmP1BFaultEnabled" checked style="width:18px; height:18px;"><span style="color:#fff; font-size:13px; font-weight:600;">Pitch 1 Pump B Fault</span></label>
+                <label style="display:flex; align-items:center; gap:10px; background:rgba(0,0,0,0.15); border-radius:10px; padding:12px 16px; border-left:3px solid #ff6b6b; cursor:pointer;"><input type="checkbox" id="alarmP2AFaultEnabled" checked style="width:18px; height:18px;"><span style="color:#fff; font-size:13px; font-weight:600;">Pitch 2 Pump A Fault</span></label>
+                <label style="display:flex; align-items:center; gap:10px; background:rgba(0,0,0,0.15); border-radius:10px; padding:12px 16px; border-left:3px solid #ff6b6b; cursor:pointer;"><input type="checkbox" id="alarmP2BFaultEnabled" checked style="width:18px; height:18px;"><span style="color:#fff; font-size:13px; font-weight:600;">Pitch 2 Pump B Fault</span></label>
+                <label style="display:flex; align-items:center; gap:10px; background:rgba(0,0,0,0.15); border-radius:10px; padding:12px 16px; border-left:3px solid #ff6b6b; cursor:pointer;"><input type="checkbox" id="alarmHighLimitEnabled" checked style="width:18px; height:18px;"><span style="color:#fff; font-size:13px; font-weight:600;">High Limit Trip</span></label>
               </div>
             </div>
-            
-            <!-- Building Protect -->
-            <div style="background:rgba(0,0,0,0.2); border-radius:12px; padding:16px;">
-              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
-                <div style="color:#ff9f43; font-weight:700; font-size:12px;">BUILDING PROTECT</div>
-                <div style="display:flex; align-items:center; gap:6px;">
+            <div style="margin-top:20px; background:rgba(0,0,0,0.15); border-radius:10px; padding:14px 16px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+              <div style="flex:1; min-width:180px;"><div style="color:#9fb0d7; font-size:14px; font-weight:600;">Alarm Hysteresis</div><div style="color:#7a8a9a; font-size:11px; margin-top:2px;">Deadband to prevent alarms toggling on/off rapidly</div></div>
+              <div style="display:flex; align-items:center; gap:4px;"><input type="number" id="alarmHysteresis" value="1" step="0.1" style="width:55px; padding:6px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#fff; text-align:center; font-size:13px; font-weight:600;"><span style="color:#7a8a9a; font-size:12px;">°C</span></div>
+            </div>
+          </div>
+
+          <div id="almPanelProtection" style="display:none;">
+            <div style="margin-bottom:24px;">
+              <div style="display:flex; align-items:center; gap:12px; margin-bottom:6px;">
+                <div style="color:#ff9f43; font-weight:800; font-size:15px;">Building Protect</div>
+                <div style="display:flex; align-items:center; gap:6px; background:rgba(0,0,0,0.3); padding:4px 10px; border-radius:20px;">
                   <div id="buildingProtectLed" style="width:10px; height:10px; border-radius:50%; background:#555;"></div>
-                  <span id="buildingProtectStatus" style="font-size:11px; color:var(--muted);">INACTIVE</span>
+                  <span id="buildingProtectStatus" style="font-size:11px; color:#7a8a9a; font-weight:600;">INACTIVE</span>
                 </div>
               </div>
-              <div class="small" style="margin-bottom:10px; color:var(--muted);">Closes actuator when primary return is too cold to protect building heating system.</div>
-              <div style="display:flex; flex-direction:column; gap:8px;">
-                <label style="display:flex; align-items:center; gap:8px; font-size:12px;">
-                  <input type="checkbox" id="buildingProtectEnabled" checked> Enable Building Protect
-                </label>
-                <div style="display:flex; align-items:center; gap:8px;">
-                  <label style="width:120px; font-size:12px;">Close Below</label>
-                  <input type="number" id="buildingProtectCloseBelowTemp" value="25" style="width:60px; padding:4px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); border-radius:4px; color:#fff; text-align:center;">
-                  <span style="font-size:11px;">°C</span>
-                </div>
-                <div style="display:flex; align-items:center; gap:8px;">
-                  <label style="width:120px; font-size:12px;">Open Above</label>
-                  <input type="number" id="buildingProtectOpenAboveTemp" value="30" style="width:60px; padding:4px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); border-radius:4px; color:#fff; text-align:center;">
-                  <span style="font-size:11px;">°C</span>
+              <div style="color:#8a9ab0; font-size:12px; margin-bottom:16px;">Closes the 3-port valve when the primary return is too cold, protecting the building heating circuit.</div>
+              <div style="background:rgba(0,0,0,0.15); border-radius:10px; padding:16px; border-left:3px solid #ff9f43;">
+                <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
+                  <label style="display:flex; align-items:center; gap:10px; cursor:pointer;"><input type="checkbox" id="buildingProtectEnabled" checked style="width:18px; height:18px;"><span style="color:#fff; font-size:14px; font-weight:600;">Enabled</span></label>
+                  <div style="width:1px; height:30px; background:rgba(255,255,255,0.1);"></div>
+                  <div style="display:flex; align-items:center; gap:6px;"><span style="color:#9fb0d7; font-size:13px; font-weight:500;">Close below</span><input type="number" id="buildingProtectCloseBelowTemp" value="25" style="width:55px; padding:6px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#fff; text-align:center; font-size:13px; font-weight:600;"><span style="color:#7a8a9a; font-size:12px;">°C</span></div>
+                  <div style="display:flex; align-items:center; gap:6px;"><span style="color:#9fb0d7; font-size:13px; font-weight:500;">Open above</span><input type="number" id="buildingProtectOpenAboveTemp" value="30" style="width:55px; padding:6px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#fff; text-align:center; font-size:13px; font-weight:600;"><span style="color:#7a8a9a; font-size:12px;">°C</span></div>
                 </div>
               </div>
             </div>
-            
-            <!-- System Alarms -->
-            <div style="background:rgba(0,0,0,0.2); border-radius:12px; padding:16px;">
-              <div style="color:#2ee59d; font-weight:700; font-size:12px; margin-bottom:12px;">SYSTEM ALARMS</div>
-              <div style="display:flex; flex-direction:column; gap:8px;">
-                <div style="display:flex; align-items:center; gap:8px;">
-                  <input type="checkbox" id="alarmCommLossEnabled" checked>
-                  <label style="flex:1; font-size:12px;">Communication Loss</label>
-                  <input type="number" id="alarmCommLossDelay" value="120" style="width:50px; padding:4px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); border-radius:4px; color:#fff; text-align:center;">
-                  <span style="font-size:11px;">sec</span>
+            <div>
+              <div style="color:#2ee59d; font-weight:800; font-size:15px; margin-bottom:6px;">System Alarms</div>
+              <div style="color:#8a9ab0; font-size:12px; margin-bottom:16px;">Connectivity and sensor health monitoring.</div>
+              <div style="display:flex; flex-direction:column; gap:10px;">
+                <div style="background:rgba(0,0,0,0.15); border-radius:10px; padding:14px 16px; border-left:3px solid #2ee59d;">
+                  <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <input type="checkbox" id="alarmCommLossEnabled" checked style="width:18px; height:18px; flex-shrink:0;">
+                    <div style="flex:1; min-width:180px;"><div style="color:#fff; font-size:14px; font-weight:600;">Communication Loss</div><div style="color:#7a8a9a; font-size:11px; margin-top:2px;">Alert if PLC stops responding for longer than the delay</div></div>
+                    <div style="text-align:center;"><div style="color:#7a8a9a; font-size:9px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:3px;">Delay</div><div style="display:flex; align-items:center; gap:4px;"><input type="number" id="alarmCommLossDelay" value="120" style="width:55px; padding:6px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#fff; text-align:center; font-size:13px; font-weight:600;"><span style="color:#7a8a9a; font-size:12px;">sec</span></div></div>
+                  </div>
                 </div>
-                <label style="display:flex; align-items:center; gap:8px; font-size:12px;"><input type="checkbox" id="alarmSensorFailEnabled" checked> Sensor Failure</label>
-                <div style="display:flex; align-items:center; gap:8px; margin-top:8px;">
-                  <label style="font-size:12px;">Hysteresis</label>
-                  <input type="number" id="alarmHysteresis" value="1" step="0.1" style="width:50px; padding:4px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); border-radius:4px; color:#fff; text-align:center;">
-                  <span style="font-size:11px;">°C</span>
+                <div style="background:rgba(0,0,0,0.15); border-radius:10px; padding:14px 16px; border-left:3px solid #2ee59d;">
+                  <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <input type="checkbox" id="alarmSensorFailEnabled" checked style="width:18px; height:18px; flex-shrink:0;">
+                    <div style="flex:1; min-width:180px;"><div style="color:#fff; font-size:14px; font-weight:600;">Sensor Failure</div><div style="color:#7a8a9a; font-size:11px; margin-top:2px;">Alert if any temperature sensor reads out of range</div></div>
+                    <div style="width:100px;"></div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-          
-          <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
-            <button class="btn" onclick="loadAlarmSettings()" style="background:#3a4a5a;">Reload</button>
-            <button class="btn" onclick="saveAlarmSettings()">Save Settings</button>
+
+          <div id="almPanelWatchdog" style="display:none;">
+            <div style="color:#ffd166; font-weight:800; font-size:15px; margin-bottom:6px;">System Watchdog</div>
+            <div style="color:#8a9ab0; font-size:12px; margin-bottom:16px;">Monitors data quality while heating is active. Sends an email alert (max once per hour) but does <strong style="color:#ccc;">not</strong> stop heating.</div>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+              <div style="background:rgba(0,0,0,0.15); border-radius:10px; padding:14px 16px; border-left:3px solid #ffd166;">
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                  <input type="checkbox" id="wdSensorStaleEnabled" checked style="width:18px; height:18px; flex-shrink:0;">
+                  <div style="flex:1; min-width:180px;"><div style="color:#fff; font-size:14px; font-weight:600;">Sensor Data Stale</div><div style="color:#7a8a9a; font-size:11px; margin-top:2px;">Alert if sensor readings have not updated within this time</div></div>
+                  <div style="text-align:center;"><div style="color:#7a8a9a; font-size:9px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:3px;">Max Age</div><div style="display:flex; align-items:center; gap:4px;"><input type="number" id="wdSensorStaleMinutes" value="15" style="width:55px; padding:6px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#fff; text-align:center; font-size:13px; font-weight:600;"><span style="color:#7a8a9a; font-size:12px;">min</span></div></div>
+                </div>
+              </div>
+              <div style="background:rgba(0,0,0,0.15); border-radius:10px; padding:14px 16px; border-left:3px solid #ffd166;">
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                  <input type="checkbox" id="wdForecastStaleEnabled" checked style="width:18px; height:18px; flex-shrink:0;">
+                  <div style="flex:1; min-width:180px;"><div style="color:#fff; font-size:14px; font-weight:600;">Forecast Data Stale</div><div style="color:#7a8a9a; font-size:11px; margin-top:2px;">Alert if weather forecast has not refreshed within this time</div></div>
+                  <div style="text-align:center;"><div style="color:#7a8a9a; font-size:9px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:3px;">Max Age</div><div style="display:flex; align-items:center; gap:4px;"><input type="number" id="wdForecastStaleHours" value="2" step="0.5" style="width:55px; padding:6px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#fff; text-align:center; font-size:13px; font-weight:600;"><span style="color:#7a8a9a; font-size:12px;">hrs</span></div></div>
+                </div>
+              </div>
+              <div style="background:rgba(0,0,0,0.15); border-radius:10px; padding:14px 16px; border-left:3px solid #ffd166;">
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                  <input type="checkbox" id="wdNoFrostRiskEnabled" checked style="width:18px; height:18px; flex-shrink:0;">
+                  <div style="flex:1; min-width:180px;"><div style="color:#fff; font-size:14px; font-weight:600;">No Frost Risk While Heating</div><div style="color:#7a8a9a; font-size:11px; margin-top:2px;">Alert if heating is running but forecast shows no frost risk</div></div>
+                  <div style="width:100px;"></div>
+                </div>
+              </div>
+              <div style="background:rgba(0,0,0,0.15); border-radius:10px; padding:14px 16px; border-left:3px solid #ffd166;">
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                  <input type="checkbox" id="wdConnLostEnabled" checked style="width:18px; height:18px; flex-shrink:0;">
+                  <div style="flex:1; min-width:180px;"><div style="color:#fff; font-size:14px; font-weight:600;">GUI Connection Lost</div><div style="color:#7a8a9a; font-size:11px; margin-top:2px;">Show banner after this many consecutive failed refresh cycles</div></div>
+                  <div style="text-align:center;"><div style="color:#7a8a9a; font-size:9px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:3px;">Failures</div><div style="display:flex; align-items:center; gap:4px;"><input type="number" id="wdConnLostThreshold" value="3" min="1" max="30" style="width:55px; padding:6px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#fff; text-align:center; font-size:13px; font-weight:600;"><span style="color:#7a8a9a; font-size:12px;">x</span></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="almPanelEmail" style="display:none;">
+            <div style="color:#7aa7ff; font-weight:800; font-size:15px; margin-bottom:6px;">Email Notifications</div>
+            <div style="color:#8a9ab0; font-size:12px; margin-bottom:16px;">SMTP credentials for alarm email delivery. Use an app-specific password for Gmail.</div>
+            <div style="background:rgba(0,0,0,0.15); border-radius:10px; padding:20px; border-left:3px solid #7aa7ff;">
+              <div style="display:flex; flex-direction:column; gap:12px; max-width:500px;">
+                <div style="display:flex; align-items:center; gap:12px;"><label style="width:100px; font-size:13px; color:#9fb0d7; font-weight:500; flex-shrink:0;">SMTP Server</label><input type="text" id="alarmSmtpServer" placeholder="smtp.gmail.com" style="flex:1; padding:8px 10px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#fff; font-size:13px;"></div>
+                <div style="display:flex; align-items:center; gap:12px;"><label style="width:100px; font-size:13px; color:#9fb0d7; font-weight:500; flex-shrink:0;">SMTP Port</label><input type="number" id="alarmSmtpPort" value="587" style="width:90px; padding:8px 10px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#fff; font-size:13px;"></div>
+                <div style="display:flex; align-items:center; gap:12px;"><label style="width:100px; font-size:13px; color:#9fb0d7; font-weight:500; flex-shrink:0;">Username</label><input type="text" id="alarmSmtpUser" placeholder="email@example.com" style="flex:1; padding:8px 10px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#fff; font-size:13px;"></div>
+                <div style="display:flex; align-items:center; gap:12px;"><label style="width:100px; font-size:13px; color:#9fb0d7; font-weight:500; flex-shrink:0;">Password</label><input type="password" id="alarmSmtpPass" style="flex:1; padding:8px 10px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#fff; font-size:13px;"></div>
+                <div style="display:flex; align-items:center; gap:12px;"><label style="width:100px; font-size:13px; color:#9fb0d7; font-weight:500; flex-shrink:0;">From</label><input type="email" id="alarmFromEmail" placeholder="alerts@smartpitch.com" style="flex:1; padding:8px 10px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#fff; font-size:13px;"></div>
+                <div style="display:flex; align-items:center; gap:12px;"><label style="width:100px; font-size:13px; color:#9fb0d7; font-weight:500; flex-shrink:0;">To</label><input type="email" id="alarmToEmail" placeholder="operator@example.com" style="flex:1; padding:8px 10px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#fff; font-size:13px;"></div>
+              </div>
+              <button class="btn" onclick="testAlarmEmail()" style="margin-top:16px; padding:8px 20px; font-size:13px;">Send Test Email</button>
+            </div>
+          </div>
+
+          <div style="margin-top:24px; display:flex; gap:10px; justify-content:flex-end;">
+            <button class="btn" onclick="loadAlarmSettings()" style="background:#3a4a5a; padding:8px 20px; font-size:13px;">Reload</button>
+            <button class="btn" onclick="saveAlarmSettings()" style="padding:8px 20px; font-size:13px;">Save Settings</button>
           </div>
         </div>
       </div>
@@ -8438,6 +8469,7 @@ function showHeatingSub(sub) {
       });
       
       document.getElementById('fdSatTh').value = data.thresholds?.saturation || 40;
+      document.getElementById('fdGreenTh').value = Math.round((data.thresholds?.greenThreshold || 0.25) * 100);
       document.getElementById('fdBrightTh').value = data.thresholds?.brightness || 150;
       document.getElementById('fdSampleInt').value = data.timing?.sampleInterval || 2;
       document.getElementById('fdSmooth').value = data.timing?.smoothingWindow || 10;
@@ -8468,7 +8500,7 @@ function showHeatingSub(sub) {
         body: JSON.stringify({
           roi: mainRoi,
           rois: roiBoxes,
-          thresholds: { saturation: parseInt(document.getElementById('fdSatTh').value)||40, brightness: parseInt(document.getElementById('fdBrightTh').value)||150 },
+          thresholds: { saturation: parseInt(document.getElementById('fdSatTh').value)||40, brightness: parseInt(document.getElementById('fdBrightTh').value)||150, greenThreshold: (parseInt(document.getElementById('fdGreenTh').value)||25)/100 },
           timing: { sampleInterval: parseInt(document.getElementById('fdSampleInt').value)||2, smoothingWindow: parseInt(document.getElementById('fdSmooth').value)||10, stateChangeDelay: parseInt(document.getElementById('fdDelay').value)||30 },
           mode: { autoDayNight: document.getElementById('fdAutoDN').checked, nightBrightnessOnly: document.getElementById('fdNightBr').checked }
         })
@@ -8818,7 +8850,21 @@ function showHeatingSub(sub) {
     if (feed) feed.style.display = 'none';
   }
 
-  function showAdvancedSub(sub) {
+    function showAlarmSub(panel) {
+    var panels = ['thresholds','protection','watchdog','email'];
+    panels.forEach(function(p) {
+      var el = document.getElementById('almPanel' + p.charAt(0).toUpperCase() + p.slice(1));
+      var btn = document.getElementById('almTab' + p.charAt(0).toUpperCase() + p.slice(1));
+      if(el) el.style.display = 'none';
+      if(btn) { btn.style.borderBottomColor = 'transparent'; btn.style.color = '#7a8a9a'; }
+    });
+    var active = document.getElementById('almPanel' + panel.charAt(0).toUpperCase() + panel.slice(1));
+    var activeBtn = document.getElementById('almTab' + panel.charAt(0).toUpperCase() + panel.slice(1));
+    if(active) active.style.display = 'block';
+    if(activeBtn) { activeBtn.style.borderBottomColor = '#2ee59d'; activeBtn.style.color = '#2ee59d'; }
+  }
+
+function showAdvancedSub(sub) {
     const plc = document.getElementById('advancedSubPLC');
     const manual = document.getElementById('advancedSubManual');
     const modbus = document.getElementById('advancedSubModbus');
