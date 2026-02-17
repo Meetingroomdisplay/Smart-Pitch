@@ -328,7 +328,7 @@
 
   <div class="callout callout-green">
     <h4>Standard Mode Records Sessions Too</h4>
-    <p>STANDARD mode records every session outcome into the learning database. This is how SmartPitch builds its initial data set when first deployed. We recommend starting on SMARTPITCH mode from day one &mdash; it uses the heat curve as a safe fallback until learning data accumulates.</p>
+    <p>STANDARD mode records every session outcome into the learning database. This is how SmartPitch builds its initial data set when first deployed. We recommend starting on SMARTPITCH mode from day one &mdash; it uses the configured fallback (heat curve or fixed setpoint) until learning data accumulates.</p>
   </div>
 
   <h3>SmartPitch Mode</h3>
@@ -681,8 +681,33 @@
   <p>The system interpolates linearly between points. Below Point 1 it caps at 35&deg;C; above Point 2 it uses 15&deg;C.</p>
 
   <div class="callout callout-amber">
-    <h4>Fallback Only</h4>
-    <p>The heat curve is used when no learning data exists (fewer than 3 sessions in any tier) or when in STANDARD mode. In SMARTPITCH mode with sufficient learning data, the <strong>learned setpoint overrides</strong> the heat curve.</p>
+    <h4>Fallback Strategy</h4>
+    <p>The heat curve is one of two fallback options when learning data is unavailable or untrusted. Operators can choose between:</p>
+    <ul>
+      <li><strong>Heat Curve (default)</strong> &mdash; dynamic flow temperature calculated from outside temperature using the 3-point curve above</li>
+      <li><strong>Fixed Setpoint</strong> &mdash; a constant flow temperature (default 16&deg;C, configurable 6&ndash;40&deg;C) used regardless of outside temperature</li>
+    </ul>
+    <p>The choice is controlled by the <em>Use Heat Curve</em> toggle in SmartPitch &gt; Heat Curve settings. When turned off, the fixed setpoint replaces the heat curve in all fallback paths: initial session start, between-session maintain, slope control, and TIER4/TIER5 blending.</p>
+  </div>
+
+  <h3>Learning Confidence Gate</h3>
+  <p>An optional confidence gate adds a second condition before SmartPitch trusts learning data. When enabled:</p>
+  <ul>
+    <li>Learning data must have <strong>&ge;3 sessions</strong> (always required)</li>
+    <li>The pass rate must meet a configurable <strong>minimum threshold</strong> (default 70%)</li>
+  </ul>
+  <p>If either condition fails, the system falls back to the heat curve or fixed setpoint. When the confidence gate is <strong>off</strong> (default), any learning data with 3+ sessions is trusted regardless of pass rate.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Setting</th><th>Default</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>Use Heat Curve</td><td>ON</td><td>Toggle between dynamic heat curve and fixed setpoint as fallback</td></tr>
+        <tr><td>Fixed Fallback Setpoint</td><td>16&deg;C</td><td>Constant flow temperature when heat curve is off (range 6&ndash;40&deg;C)</td></tr>
+        <tr><td>Confidence Gate</td><td>OFF</td><td>When on, requires learning pass rate to meet threshold</td></tr>
+        <tr><td>Minimum Pass Rate</td><td>70%</td><td>Threshold for confidence gate (range 50&ndash;95%)</td></tr>
+      </tbody>
+    </table>
   </div>
 </div>
 
@@ -888,7 +913,7 @@
   <ol>
     <li><strong>Band match</strong> &mdash; find gap learning data matching the current temperature band and soil start band</li>
     <li><strong>Global average</strong> &mdash; if no band-specific data, use overall gap averages</li>
-    <li><strong>Heat curve default</strong> &mdash; if no gap data exists at all, fall back to the heat curve setpoint (conservative)</li>
+    <li><strong>Fallback setpoint</strong> &mdash; if no gap data exists at all, fall back to the configured fallback (heat curve or fixed setpoint, as per Fallback Strategy settings)</li>
   </ol>
 
   <div class="callout callout-green">
@@ -898,7 +923,7 @@
 
   <div class="callout callout-green">
     <h4>Energy Savings</h4>
-    <p>With gap learning, the maintain setpoint is often lower than the heat curve default &mdash; the system has evidence that the soil stays warm enough without aggressive heating. This saves significant energy compared to a fixed maintain temperature, while the confidence buffer ensures safety until enough data has been collected.</p>
+    <p>With gap learning, the maintain setpoint is often lower than the heat curve default &mdash; the system has evidence that the soil stays warm enough without aggressive heating. This saves significant energy compared to a fixed fallback temperature, while the confidence buffer ensures safety until enough data has been collected.</p>
   </div>
 
   <p>If the next session is more than 48 hours away, the system returns to MONITOR and will restart heating based on learning recommendations when the time comes.</p>
@@ -1185,7 +1210,7 @@ try {
         <tr><td>Alarms</td><td>Alarm configuration &mdash; temperature thresholds, hardware fault enables, email notification settings. Active faults display with real-time status.</td></tr>
         <tr><td>Temperature Control</td><td>PID controller settings for valve actuator, pitch selection</td></tr>
         <tr><td>Heat Curve</td><td>Configure the 3-point temperature curve with knee, live chart preview</td></tr>
-        <tr><td>Settings</td><td>All configurable parameters: Standard Mode, Frost Protection, SmartPitch Mode (nested: Safety Net, Heat Curve, Timing, Soil Temp, Maintain)</td></tr>
+        <tr><td>Settings</td><td>All configurable parameters: Standard Mode, Frost Protection, SmartPitch Mode (nested: Safety Net, Fallback Strategy, Timing, Soil Temp, Maintain)</td></tr>
       </tbody>
     </table>
   </div>
@@ -1433,7 +1458,7 @@ try {
 
   <div class="card">
     <h4>Scenario 6: New System (No Learning Data)</h4>
-    <p>Zero historical sessions. Falls through all tiers to TIER5_GLOBAL &mdash; no data. Falls back to heat curve for setpoint. Soil deficit adds extra heating if soil is cold. Default 6h lead time. Sessions recorded in both modes. After 3+ sessions, TIER4_1BAND provides data. System progressively improves with each session.</p>
+    <p>Zero historical sessions. Falls through all tiers to TIER5_GLOBAL &mdash; no data. Falls back to the configured fallback (heat curve by default, or fixed setpoint if heat curve is disabled). Soil deficit adds extra heating if soil is cold. Default 6h lead time. If the confidence gate is enabled, learning data is not trusted until the pass rate meets the threshold. Sessions recorded in both modes. After 3+ sessions, TIER4_1BAND provides data. System progressively improves with each session.</p>
   </div>
 
   <div class="card">
