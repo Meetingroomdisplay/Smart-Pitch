@@ -8153,26 +8153,55 @@ document.addEventListener("DOMContentLoaded", function() {
               
               <!-- Heat Curve Sub-tab -->
               <div id="spTabHeatCurve" style="display:none;">
-                <div class="settings-section-title">Heat Curve Fallback</div>
-                <p class="small" style="margin-bottom:12px; color:var(--muted);">The heat curve provides baseline flow temperatures when learning data is insufficient. As the system learns, it relies less on this curve.</p>
+                <div class="settings-section-title">Fallback Strategy</div>
+                <p class="small" style="margin-bottom:12px; color:var(--muted);">When SmartPitch has no learning data (or insufficient confidence), it needs a fallback to determine flow temperature. Choose between the dynamic heat curve or a fixed setpoint.</p>
                 
                 <div class="settings-row">
                   <div class="settings-label">
                     <span class="settings-label-text">Use Heat Curve</span>
-                    <span class="settings-label-hint">Enable heat curve as fallback when no learning data</span>
+                    <span class="settings-label-hint">ON = heat curve calculates flow temp from outside temp. OFF = fixed setpoint used instead.</span>
                   </div>
                   <div class="settings-input">
                     <label class="switch">
-                      <input type="checkbox" id="useHeatCurve" checked onchange="saveSmartPitchSettings()">
+                      <input type="checkbox" id="useHeatCurve" checked onchange="saveSmartPitchSettings(); toggleFixedSetpoint();">
                       <span class="slider round"></span>
                     </label>
                   </div>
                 </div>
                 
+                <div class="settings-row" id="fixedSetpointRow" style="display:none;">
+                  <div class="settings-label">
+                    <span class="settings-label-text">Fixed Fallback Setpoint</span>
+                    <span class="settings-label-hint">Flow temperature used when heat curve is off and no learning data</span>
+                  </div>
+                  <div class="settings-input">
+                    <input type="number" id="fixedFallbackSetpoint" value="16" min="6" max="40" step="1" onchange="saveSmartPitchSettings()">
+                    <span class="settings-input-unit">&deg;C</span>
+                  </div>
+                </div>
+                
+                <div style="border-top:1px solid var(--border); margin:16px 0; padding-top:16px;">
+                  <div class="settings-section-title" style="font-size:13px;">Learning Confidence Gate</div>
+                  <p class="small" style="margin-bottom:12px; color:var(--muted);">When enabled, learning data must meet the pass-rate threshold before SmartPitch trusts it. Below that threshold, the fallback (heat curve or fixed setpoint) is used instead.</p>
+                </div>
+                
                 <div class="settings-row">
                   <div class="settings-label">
-                    <span class="settings-label-text">Learning Confidence Threshold</span>
-                    <span class="settings-label-hint">Minimum confidence before using learned data over heat curve</span>
+                    <span class="settings-label-text">Confidence Gate</span>
+                    <span class="settings-label-hint">ON = require minimum pass rate. OFF = trust any learning data (≥3 sessions).</span>
+                  </div>
+                  <div class="settings-input">
+                    <label class="switch">
+                      <input type="checkbox" id="learningConfidenceEnabled" onchange="saveSmartPitchSettings(); toggleConfidenceThreshold();">
+                      <span class="slider round"></span>
+                    </label>
+                  </div>
+                </div>
+                
+                <div class="settings-row" id="confidenceThresholdRow" style="display:none;">
+                  <div class="settings-label">
+                    <span class="settings-label-text">Minimum Pass Rate</span>
+                    <span class="settings-label-hint">Learning data needs this pass rate to be trusted over fallback</span>
                   </div>
                   <div class="settings-input">
                     <input type="number" id="learningConfidence" value="70" min="50" max="95" step="5" onchange="saveSmartPitchSettings()">
@@ -11998,7 +12027,18 @@ function showAdvancedSub(sub) {
 
 
   // SmartPitch sub-tab navigation
-  function showSpTab(tab) {
+  
+function toggleFixedSetpoint() {
+  var useHC = document.getElementById('useHeatCurve');
+  var row = document.getElementById('fixedSetpointRow');
+  if (row && useHC) row.style.display = useHC.checked ? 'none' : 'flex';
+}
+function toggleConfidenceThreshold() {
+  var enabled = document.getElementById('learningConfidenceEnabled');
+  var row = document.getElementById('confidenceThresholdRow');
+  if (row && enabled) row.style.display = enabled.checked ? 'flex' : 'none';
+}
+function showSpTab(tab) {
     const tabs = ['safetynet', 'heatcurve', 'timing', 'soiltemp', 'maintain'];
     tabs.forEach(t => {
       const panel = document.getElementById('spTab' + t.charAt(0).toUpperCase() + t.slice(1).replace('net', 'Net').replace('curve', 'Curve'));
@@ -12015,8 +12055,10 @@ function saveSmartPitchSettings() {
     const offTrackSlope = document.getElementById('offTrackSlope')?.value || -0.5;
     const slopeWindow = document.getElementById('slopeWindow')?.value || 60;
     
-    // Heat Curve settings
+    // Heat Curve / Fallback settings
     const useHeatCurve = document.getElementById('useHeatCurve')?.checked ?? true;
+    const fixedFallbackSetpoint = document.getElementById('fixedFallbackSetpoint')?.value || 16;
+    const learningConfidenceEnabled = document.getElementById('learningConfidenceEnabled')?.checked ?? false;
     const learningConfidence = document.getElementById('learningConfidence')?.value || 70;
     
     // Timing settings
@@ -12047,6 +12089,8 @@ function saveSmartPitchSettings() {
           off_track_slope: parseFloat(offTrackSlope),
           slope_window_minutes: parseInt(slopeWindow),
           use_heat_curve: useHeatCurve,
+          fixed_fallback_setpoint: parseFloat(fixedFallbackSetpoint),
+          learning_confidence_enabled: learningConfidenceEnabled,
           learning_confidence: parseInt(learningConfidence),
           forecast_lookahead_hours: parseInt(forecastLookahead),
           success_temp: parseFloat(successTemp),
@@ -12093,15 +12137,25 @@ function saveSmartPitchSettings() {
         if (el) el.value = data.slope_window_minutes;
       }
       
-      // Heat Curve settings
+      // Heat Curve / Fallback settings
       if (data.use_heat_curve !== undefined) {
         const el = document.getElementById('useHeatCurve');
         if (el) el.checked = data.use_heat_curve;
+      }
+      if (data.fixed_fallback_setpoint !== undefined) {
+        const el = document.getElementById('fixedFallbackSetpoint');
+        if (el) el.value = data.fixed_fallback_setpoint;
+      }
+      if (data.learning_confidence_enabled !== undefined) {
+        const el = document.getElementById('learningConfidenceEnabled');
+        if (el) el.checked = data.learning_confidence_enabled;
       }
       if (data.learning_confidence !== undefined) {
         const el = document.getElementById('learningConfidence');
         if (el) el.value = data.learning_confidence;
       }
+      toggleFixedSetpoint();
+      toggleConfidenceThreshold();
       
       // Timing settings
       if (data.forecast_lookahead_hours !== undefined) {
