@@ -8330,17 +8330,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 <div class="settings-section-title">Timing & Deadlines</div>
                 <p class="small" style="margin-bottom:12px; color:var(--muted);">Configure how far ahead the system looks and when it considers sessions complete.</p>
                 
-                <div class="settings-row">
-                  <div class="settings-label">
-                    <span class="settings-label-text">Forecast Lookahead</span>
-                    <span class="settings-label-hint">Hours of forecast data to consider for decisions</span>
-                  </div>
-                  <div class="settings-input">
-                    <input type="number" id="forecastLookahead" value="24" min="12" max="72" step="6" onchange="saveSmartPitchSettings()">
-                    <span class="settings-input-unit">hrs</span>
-                  </div>
-                </div>
-                
+
                 <div class="settings-row">
                   <div class="settings-label">
                     <span class="settings-label-text">Success Temperature</span>
@@ -8352,16 +8342,7 @@ document.addEventListener("DOMContentLoaded", function() {
                   </div>
                 </div>
                 
-                <div class="settings-row">
-                  <div class="settings-label">
-                    <span class="settings-label-text">Cool Buffer Hours</span>
-                    <span class="settings-label-hint">Hours before reducing heat after success (if no cold night ahead)</span>
-                  </div>
-                  <div class="settings-input">
-                    <input type="number" id="coolBufferHours" value="2" min="1" max="6" step="1" onchange="saveSmartPitchSettings()">
-                    <span class="settings-input-unit">hrs</span>
-                  </div>
-                </div>
+
               </div><!-- End Timing Sub-tab -->
               
               <!-- Soil Temperature Sub-tab -->
@@ -8444,16 +8425,7 @@ document.addEventListener("DOMContentLoaded", function() {
               <!-- Maintain sub-tab -->
               <div id="spTabMaintain" style="display:none">
                 <p style="color:var(--muted);font-size:0.85rem;margin-bottom:14px;">Smart maintain heating between consecutive sessions. Instead of blindly holding a fixed temperature, the system reads the soil probe and decides the most energy-efficient action:</p><div style="background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:0.82rem;color:var(--muted);line-height:1.6;"><div style="margin-bottom:6px;color:var(--text);font-weight:600;">Decision priority (top to bottom):</div><div style="display:flex;align-items:start;gap:8px;margin-bottom:4px;"><span style="color:var(--accent);font-weight:700;min-width:18px;">1.</span><span><b style="color:var(--text);">Skip to ramp-up</b> — If already within the learning lead time for the next session, jump straight to HEATING at the learned target temp. No point maintaining at 14°C when you need 18°C in 3 hours.</span></div><div style="display:flex;align-items:start;gap:8px;margin-bottom:4px;"><span style="color:var(--accent);font-weight:700;min-width:18px;">2.</span><span><b style="color:var(--text);">Soil safe — skip</b> — If soil is well above safe threshold (+2°C), the pitch isn’t at risk. System monitors without heating.</span></div><div style="display:flex;align-items:start;gap:8px;margin-bottom:4px;"><span style="color:var(--accent);font-weight:700;min-width:18px;">3.</span><span><b style="color:var(--text);">Soil OK — reduced</b> — If soil is above safe but not by much, maintain at a reduced temp (target − 2°C) to save energy while keeping a buffer.</span></div><div style="display:flex;align-items:start;gap:8px;margin-bottom:4px;"><span style="color:var(--accent);font-weight:700;min-width:18px;">4.</span><span><b style="color:var(--text);">Soil cold — full maintain</b> — If soil is at or below safe threshold, maintain at the full configured temperature.</span></div><div style="display:flex;align-items:start;gap:8px;"><span style="color:var(--accent);font-weight:700;min-width:18px;">5.</span><span><b style="color:var(--text);">Beyond window</b> — If the next session is further away than the maintain window, stop maintaining. The system will restart based on learning data.</span></div></div>
-                <div class="settings-row">
-                  <div class="settings-label">
-                    <span>Maintain Temperature</span>
-                    <span class="settings-label-hint">Target flow temp between sessions</span>
-                  </div>
-                  <div class="settings-input">
-                    <input type="number" id="maintainTemp" value="14" min="8" max="25" step="0.5" onchange="saveSmartPitchSettings()">
-                    <span class="settings-input-unit">°C</span>
-                  </div>
-                </div>
+
                 <div class="settings-row">
                   <div class="settings-label">
                     <span>Maintain Window</span>
@@ -12215,9 +12187,7 @@ function saveSmartPitchSettings() {
     const learningConfidence = document.getElementById('learningConfidence')?.value || 70;
     
     // Timing settings
-    const forecastLookahead = document.getElementById('forecastLookahead')?.value || 24;
     const successTemp = document.getElementById('successTemp')?.value || 5.0;
-    const coolBufferHours = document.getElementById('coolBufferHours')?.value || 2;
     
     // Soil Temperature settings
     const soilSetpointFactor = document.getElementById('soilSetpointFactor')?.value || 0.5;
@@ -12227,7 +12197,6 @@ function saveSmartPitchSettings() {
     const soilDeficitLeadFactor = document.getElementById('soilDeficitLeadFactor')?.value || 0.5;
     
     // Maintain settings
-    const maintainTemp = document.getElementById('maintainTemp')?.value || 14;
     const maintainWindowHours = document.getElementById('maintainWindowHours')?.value || 48;
     const maintainSoilSafe = document.getElementById('maintainSoilSafe')?.value || 4.0;
     
@@ -12247,15 +12216,12 @@ function saveSmartPitchSettings() {
           fixed_fallback_setpoint: parseFloat(fixedFallbackSetpoint),
           learning_confidence_enabled: learningConfidenceEnabled,
           learning_confidence: parseInt(learningConfidence),
-          forecast_lookahead_hours: parseInt(forecastLookahead),
           success_temp: parseFloat(successTemp),
-          cool_buffer_hours: parseInt(coolBufferHours),
           soil_setpoint_factor: parseFloat(soilSetpointFactor),
           soil_lead_factor: parseFloat(soilLeadFactor),
           soil_deficit_threshold: parseFloat(soilDeficitThreshold),
           soil_deficit_flow_factor: parseFloat(soilDeficitFlowFactor),
           soil_deficit_lead_factor: parseFloat(soilDeficitLeadFactor),
-          maintain_temp: parseFloat(maintainTemp),
           maintain_window_hours: parseFloat(maintainWindowHours),
           maintain_soil_safe_c: parseFloat(maintainSoilSafe)
         }
@@ -12321,17 +12287,9 @@ function saveSmartPitchSettings() {
       toggleConfidenceThreshold();
       
       // Timing settings
-      if (data.forecast_lookahead_hours !== undefined) {
-        const el = document.getElementById('forecastLookahead');
-        if (el) el.value = data.forecast_lookahead_hours;
-      }
       if (data.success_temp !== undefined) {
         const el = document.getElementById('successTemp');
         if (el) el.value = data.success_temp;
-      }
-      if (data.cool_buffer_hours !== undefined) {
-        const el = document.getElementById('coolBufferHours');
-        if (el) el.value = data.cool_buffer_hours;
       }
       
       // Soil Temperature settings
@@ -12357,10 +12315,6 @@ function saveSmartPitchSettings() {
       }
       
       // Maintain settings
-      if (data.maintain_temp !== undefined) {
-        const el = document.getElementById('maintainTemp');
-        if (el) el.value = data.maintain_temp;
-      }
       if (data.maintain_window_hours !== undefined) {
         const el = document.getElementById('maintainWindowHours');
         if (el) el.value = data.maintain_window_hours;
