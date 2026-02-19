@@ -10015,7 +10015,8 @@ function showAdvancedSub(sub) {
       // There are frost sessions - build the plan
       const immediateFrost = frostSessions.find(s => s.session_num === 1);
 
-      if (immediateFrost) {
+      if (immediateFrost && immediateFrost.min_temp_c < 0) {
+        // TRUE FROST - below freezing, system will heat
         statusText = 'FROST RISK';
         statusColor = '#ff6b4a';
         statusBg = 'rgba(255,107,74,0.15)';
@@ -10036,9 +10037,27 @@ function showAdvancedSub(sub) {
           }
           plan += '.';
         } else {
-          plan += 'SmartPitch will use the heat curve to determine when to start heating.';
+          plan += 'SmartPitch will use the configured fallback to determine when to start heating.';
         }
+
+      } else if (immediateFrost) {
+        // NEAR FROST - between 0 and 2 degrees, not yet triggering heating
+        statusText = 'NEAR FROST';
+        statusColor = '#f0ad4e';
+        statusBg = 'rgba(240,173,78,0.15)';
+        const nextDay = fmtDay(nt.playable_by_ts);
+        plan = 'Near-frost conditions for ' + nt.session_name + ' on ' + nextDay + ' (forecast min ' + immediateFrost.min_temp_c.toFixed(1) + '\u00B0C). ';
+        plan += 'SmartPitch is monitoring closely and will activate heating if the forecast drops below freezing.';
+
+        // Still mention future frost sessions if any
+        const futureFrost = frostSessions.filter(s => s.session_num > 1 && s.min_temp_c < 0);
+        if (futureFrost.length > 0) {
+          const frostDays = futureFrost.map(s => fmtDay(s.playable_by) + ' (' + s.min_temp_c.toFixed(1) + '\u00B0C)');
+          plan += ' Frost expected for ' + frostDays.join(', ') + '.';
+        }
+
       } else {
+        // Next session safe, but future sessions have frost risk
         statusText = 'MONITORING';
         statusColor = '#f0ad4e';
         statusBg = 'rgba(240,173,78,0.15)';
@@ -10049,15 +10068,19 @@ function showAdvancedSub(sub) {
         const nextTemp = nextMin ? nextMin.min_temp_c.toFixed(1) : '?';
         plan = nextDay + ' (' + nt.session_name + '): No heating needed (min ' + nextTemp + '\u00B0C). ';
 
-        // Show frost sessions
+        // Show frost sessions with appropriate language
         frostSessions.forEach(fs => {
           const fsDay = fmtDay(fs.playable_by);
-          plan += fsDay + ': Frost risk (min ' + fs.min_temp_c.toFixed(1) + '\u00B0C). ';
+          if (fs.min_temp_c < 0) {
+            plan += fsDay + ': Frost risk (min ' + fs.min_temp_c.toFixed(1) + '\u00B0C). ';
+          } else {
+            plan += fsDay + ': Near-frost (min ' + fs.min_temp_c.toFixed(1) + '\u00B0C). ';
+          }
         });
 
-        // Show the plan for the worst frost session
+        // Show the plan for the worst frost session (only if true frost)
         const worstFrost = frostSessions.reduce((w, s) => (!w || s.min_temp_c < w.min_temp_c) ? s : w, null);
-        if (worstFrost && (lmiMatch.adjusted_worst_lead_hours || lmiMatch.avg_pass_lead_hours)) {
+        if (worstFrost && worstFrost.min_temp_c < 0 && (lmiMatch.adjusted_worst_lead_hours || lmiMatch.avg_pass_lead_hours)) {
           const leadH = Math.round(lmiMatch.adjusted_worst_lead_hours || lmiMatch.avg_pass_lead_hours);
           const deadlineMs = new Date(worstFrost.playable_by).getTime();
           const startDate = new Date(deadlineMs - leadH * 3600000);
@@ -10068,8 +10091,10 @@ function showAdvancedSub(sub) {
             plan += ' at ' + Math.round(lmiMatch.optimal_wish_temp) + '\u00B0C flow temperature';
           }
           plan += ', based on ' + (lmiMatch.total_sessions || '?') + ' similar past sessions.';
-        } else if (worstFrost) {
+        } else if (worstFrost && worstFrost.min_temp_c < 0) {
           plan += 'SmartPitch will calculate the heating plan as the frost session approaches.';
+        } else {
+          plan += 'SmartPitch is monitoring and will activate heating if the forecast worsens.';
         }
       }
     }
