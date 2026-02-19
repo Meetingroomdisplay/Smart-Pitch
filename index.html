@@ -10230,25 +10230,38 @@ function showAdvancedSub(sub) {
       
       // Learning Insights
       let learningText = '';
-      const confidence = rec.confidence;
-      const passRate = rec.pass_rate;
-      const matches = learning.matches || {};
-      
-      if (confidence && confidence !== 'LOW') {
-        learningText = 'SmartPitch has good historical data for conditions like these. ';
-        if (passRate !== undefined && passRate !== null) {
-          learningText += 'In similar weather conditions, ' + Math.round(passRate) + '% of heating sessions have been successful. ';
-        }
-        if (rec.start_offset_minutes) {
-          const offsetHours = Math.abs(rec.start_offset_minutes) / 60;
-          if (rec.start_offset_minutes < 0) {
-            learningText += 'Based on past experience, heating should start ' + offsetHours.toFixed(1) + ' hours earlier than the default.';
+      const nMatches = (learning.matches || {}).n || 0;
+      const matchPassRate = (learning.matches || {}).pass_rate;
+      const frostRiskNow = status.forecast_min_temp != null && status.forecast_min_temp < 2;
+
+      if (nMatches > 0 && rec.confidence && rec.confidence > 0.2) {
+        if (frostRiskNow) {
+          learningText = 'SmartPitch has ' + nMatches + ' historical session' + (nMatches !== 1 ? 's' : '') + ' from similar weather conditions. ';
+          if (matchPassRate != null) {
+            learningText += Math.round(matchPassRate) + '% of those were successful. ';
+          }
+          if (rec.suggested_start_ts) {
+            const suggestedTime = new Date(rec.suggested_start_ts);
+            const now = new Date();
+            const hoursUntil = (suggestedTime - now) / (1000 * 60 * 60);
+            if (hoursUntil > 0) {
+              learningText += 'Based on this data, heating should begin in approximately ' + Math.round(hoursUntil) + ' hours.';
+            } else {
+              learningText += 'Based on this data, heating may need to begin soon.';
+            }
+          }
+        } else {
+          learningText = 'No frost risk is currently forecast. ';
+          if (matchPassRate != null && matchPassRate === 100) {
+            learningText += 'For reference, all ' + nMatches + ' previous session' + (nMatches !== 1 ? 's' : '') + ' in similar conditions were successful without issues.';
+          } else if (matchPassRate != null) {
+            learningText += 'For reference, ' + Math.round(matchPassRate) + '% of ' + nMatches + ' previous session' + (nMatches !== 1 ? 's' : '') + ' in similar conditions were successful.';
           } else {
-            learningText += 'Past experience suggests heating can start ' + offsetHours.toFixed(1) + ' hours later than default, saving energy.';
+            learningText += 'SmartPitch has data from ' + nMatches + ' similar session' + (nMatches !== 1 ? 's' : '') + ' to draw on when frost risk does occur.';
           }
         }
-      } else if (matches.total_sessions && matches.total_sessions > 0) {
-        learningText = 'SmartPitch has ' + matches.total_sessions + ' historical sessions to learn from. As more sessions are completed, predictions will become more accurate.';
+      } else if (nMatches > 0) {
+        learningText = 'SmartPitch has limited data for these specific conditions (' + nMatches + ' session' + (nMatches !== 1 ? 's' : '') + '). Predictions will improve with more sessions.';
       } else {
         learningText = 'SmartPitch is still learning about your pitch. After a few heating sessions, the system will start making smarter predictions based on actual results.';
       }
