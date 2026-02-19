@@ -8213,11 +8213,32 @@ document.addEventListener("DOMContentLoaded", function() {
               
               <div class="settings-row">
                 <div class="settings-label">
-                  <span class="settings-label-text">Emergency Threshold</span>
-                  <span class="settings-label-hint">Pitch temp below which emergency intervention triggers</span>
+                  <span class="settings-label-text">Emergency Override</span>
+                  <span class="settings-label-hint">Force heating when pitch soil temp drops dangerously low</span>
                 </div>
                 <div class="settings-input">
-                  <input type="number" id="emergencyThreshold" value="1.0" min="0" max="3.0" step="0.5" onchange="saveSmartPitchSettings()">
+                  <label class="switch"><input type="checkbox" id="emergencyEnabled" checked onchange="saveSmartPitchSettings()"><span class="slider"></span></label>
+                </div>
+              </div>
+
+              <div class="settings-row">
+                <div class="settings-label">
+                  <span class="settings-label-text">Emergency Threshold</span>
+                  <span class="settings-label-hint">Pitch soil temp below which emergency heating activates</span>
+                </div>
+                <div class="settings-input">
+                  <input type="number" id="emergencyThreshold" value="1.0" min="-2" max="5.0" step="0.5" onchange="saveSmartPitchSettings()">
+                  <span class="settings-input-unit">°C</span>
+                </div>
+              </div>
+
+              <div class="settings-row">
+                <div class="settings-label">
+                  <span class="settings-label-text">Emergency Flow Temp</span>
+                  <span class="settings-label-hint">Flow temperature used when emergency heating activates</span>
+                </div>
+                <div class="settings-input">
+                  <input type="number" id="emergencyFlowTemp" value="20" min="10" max="40" step="1" onchange="saveSmartPitchSettings()">
                   <span class="settings-input-unit">°C</span>
                 </div>
               </div>
@@ -12217,7 +12238,9 @@ function saveSmartPitchSettings() {
         key: 'smartpitch',
         value: {
           safety_net_enabled: safetyNetEnabled,
-          emergency_threshold: parseFloat(emergencyThreshold),
+          emergency_enabled: document.getElementById('emergencyEnabled')?.checked ?? true,
+      emergency_threshold: parseFloat(emergencyThreshold),
+      emergency_flow_temp: parseFloat(document.getElementById('emergencyFlowTemp')?.value || 20),
           off_track_slope: parseFloat(offTrackSlope),
           slope_window_minutes: parseInt(slopeWindow),
           use_heat_curve: useHeatCurve,
@@ -12259,6 +12282,14 @@ function saveSmartPitchSettings() {
       if (data.emergency_threshold !== undefined) {
         const el = document.getElementById('emergencyThreshold');
         if (el) el.value = data.emergency_threshold;
+      }
+      if (data.emergency_enabled !== undefined) {
+        const el = document.getElementById('emergencyEnabled');
+        if (el) el.checked = data.emergency_enabled;
+      }
+      if (data.emergency_flow_temp !== undefined) {
+        const el = document.getElementById('emergencyFlowTemp');
+        if (el) el.value = data.emergency_flow_temp;
       }
       if (data.off_track_slope !== undefined) {
         const el = document.getElementById('offTrackSlope');
