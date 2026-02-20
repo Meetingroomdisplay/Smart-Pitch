@@ -175,7 +175,7 @@
     #soil, #slope, #camera,
     #protection, #lookahead,
     #settings, #gui, #database,
-    #scenarios, #troubleshooting, #architecture, #security {
+    #scenarios, #troubleshooting, #architecture {
       page-break-before: always;
       break-before: page;
     }
@@ -287,17 +287,28 @@
   <div class="section-header">
     <div class="section-num">01</div>
     <div class="section-title">Operating Modes</div>
-    <h2>Three Modes of Operation</h2>
+    <h2>System Control &amp; Operating Modes</h2>
   </div>
 
-  <p>SmartPitch supports three operating modes, selectable from the GUI. Each mode determines how heating decisions are made.</p>
+  <h3>Master System Enable</h3>
+  <p>A master <strong>System Enable</strong> toggle sits above the mode selector on the Heating Control tab. When switched OFF:</p>
+  <ul>
+    <li>All heating stops immediately &mdash; no pitch heating, no frost protection</li>
+    <li>A red pulsing <strong>"SYSTEM DISABLED"</strong> banner appears on the dashboard</li>
+    <li>Mode buttons are greyed out, but the selected mode is preserved</li>
+    <li>Toggling back ON restores the previous mode instantly &mdash; no reconfiguration needed</li>
+    <li>Data collection continues normally (sensors, weather, trend logging)</li>
+  </ul>
 
-  <div class="card-grid cols-3">
-    <div class="card" style="text-align:center;">
-      <div class="card-icon">&#9632;</div>
-      <h4>OFF</h4>
-      <p>System disabled. No heating decisions are made. All outputs remain off.</p>
-    </div>
+  <div class="callout callout-amber">
+    <h4>Use Cases</h4>
+    <p>Seasonal shutdown (summer), maintenance windows, or commissioning. The toggle is stored as a database setting so it persists across restarts.</p>
+  </div>
+
+  <h3>Operating Modes</h3>
+  <p>SmartPitch supports two operating modes, selectable from the GUI. Each mode determines how heating decisions are made. A third &ldquo;OFF&rdquo; state exists in the database but is superseded by the master system toggle.</p>
+
+  <div class="card-grid cols-2">
     <div class="card" style="text-align:center;">
       <div class="card-icon">&#9650;</div>
       <h4>STANDARD</h4>
@@ -328,7 +339,7 @@
 
   <div class="callout callout-green">
     <h4>Standard Mode Records Sessions Too</h4>
-    <p>STANDARD mode records every session outcome into the learning database. This is how SmartPitch builds its initial data set when first deployed. We recommend starting on SMARTPITCH mode from day one &mdash; it uses the configured fallback (heat curve or fixed setpoint) until learning data accumulates.</p>
+    <p>STANDARD mode records every session outcome into the learning database. This is how SmartPitch builds its initial data set when first deployed. We recommend starting on SMARTPITCH mode from day one &mdash; it uses the heat curve as a safe fallback until learning data accumulates.</p>
   </div>
 
   <h3>SmartPitch Mode</h3>
@@ -368,7 +379,11 @@
 
   <p>The full decision flow is evaluated every control cycle (~60 seconds). This is the logic that determines whether SmartPitch should heat, monitor, or maintain.</p>
 
-  <div class="tree"><span class="q">Is there a training session scheduled?</span>
+  <div class="tree"><span class="q">Is the system enabled?</span>
+  |
+  +-- <span class="no">NO</span> --> <span class="action">"System disabled" (all outputs OFF, data collection continues)</span>
+  |
+  +-- <span class="yes">YES</span> --> <span class="q">Is there a training session scheduled?</span>
   |
   +-- <span class="no">NO</span> --> <span class="action">MONITOR ("No training scheduled - system idle")</span>
   |
@@ -681,33 +696,8 @@
   <p>The system interpolates linearly between points. Below Point 1 it caps at 35&deg;C; above Point 2 it uses 15&deg;C.</p>
 
   <div class="callout callout-amber">
-    <h4>Fallback Strategy</h4>
-    <p>The heat curve is one of two fallback options when learning data is unavailable or untrusted. Operators can choose between:</p>
-    <ul>
-      <li><strong>Heat Curve (default)</strong> &mdash; dynamic flow temperature calculated from outside temperature using the 3-point curve above</li>
-      <li><strong>Fixed Setpoint</strong> &mdash; a constant flow temperature (default 16&deg;C, configurable 6&ndash;40&deg;C) used regardless of outside temperature</li>
-    </ul>
-    <p>The choice is controlled by the <em>Use Heat Curve</em> toggle in SmartPitch &gt; Heat Curve settings. When turned off, the fixed setpoint replaces the heat curve in all fallback paths: initial session start, between-session maintain, slope control, and TIER4/TIER5 blending.</p>
-  </div>
-
-  <h3>Learning Confidence Gate</h3>
-  <p>An optional confidence gate adds a second condition before SmartPitch trusts learning data. When enabled:</p>
-  <ul>
-    <li>Learning data must have <strong>&ge;3 sessions</strong> (always required)</li>
-    <li>The pass rate must meet a configurable <strong>minimum threshold</strong> (default 70%)</li>
-  </ul>
-  <p>If either condition fails, the system falls back to the heat curve or fixed setpoint. When the confidence gate is <strong>off</strong> (default), any learning data with 3+ sessions is trusted regardless of pass rate.</p>
-
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Setting</th><th>Default</th><th>Description</th></tr></thead>
-      <tbody>
-        <tr><td>Use Heat Curve</td><td>ON</td><td>Toggle between dynamic heat curve and fixed setpoint as fallback</td></tr>
-        <tr><td>Fixed Fallback Setpoint</td><td>16&deg;C</td><td>Constant flow temperature when heat curve is off (range 6&ndash;40&deg;C)</td></tr>
-        <tr><td>Confidence Gate</td><td>OFF</td><td>When on, requires learning pass rate to meet threshold</td></tr>
-        <tr><td>Minimum Pass Rate</td><td>70%</td><td>Threshold for confidence gate (range 50&ndash;95%)</td></tr>
-      </tbody>
-    </table>
+    <h4>Fallback Only</h4>
+    <p>The heat curve is used when no learning data exists (fewer than 3 sessions in any tier) or when in STANDARD mode. In SMARTPITCH mode with sufficient learning data, the <strong>learned setpoint overrides</strong> the heat curve.</p>
   </div>
 </div>
 
@@ -788,26 +778,11 @@
   <div class="steps">
     <div class="step"><div class="step-num">1</div><div class="step-title">Capture</div><div class="step-desc">Camera takes periodic snapshots of pitch surface</div></div>
     <div class="step-arrow">&rarr;</div>
-    <div class="step"><div class="step-num">2</div><div class="step-title">Analyse</div><div class="step-desc">Counts green pixels in each ROI using HSV hue and saturation</div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-title">Analyse</div><div class="step-desc">Compares saturation and brightness against thresholds</div></div>
     <div class="step-arrow">&rarr;</div>
-    <div class="step"><div class="step-num">3</div><div class="step-title">Confirm</div><div class="step-desc">Multiple frames must agree before changing frost state</div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-title">Confirm</div><div class="step-desc">Multiple frames required before changing frost state</div></div>
     <div class="step-arrow">&rarr;</div>
     <div class="step"><div class="step-num">4</div><div class="step-title">Record</div><div class="step-desc">Result feeds into leaf_frost boolean and session pass/fail</div></div>
-  </div>
-
-  <h3>Green Pixel Ratio Algorithm</h3>
-  <p>Rather than averaging saturation across the whole image (which is fragile against shadows and overcast), SmartPitch counts individual <strong>green pixels</strong>:</p>
-  <ol>
-    <li>Convert each ROI to HSV colour space (OpenCV: H 0&ndash;180, S 0&ndash;255, V 0&ndash;255)</li>
-    <li>A pixel is classified as "green grass" if its <strong>hue is 30&ndash;85</strong> (green range) <strong>AND</strong> saturation exceeds the saturation floor (default 15)</li>
-    <li>Calculate <code>green_ratio = green_pixels / total_pixels</code></li>
-    <li>If <code>green_ratio &lt; green_threshold</code> (default 25%) &rarr; frost detected for that ROI</li>
-    <li>Majority voting across all ROIs determines the frame-level result</li>
-  </ol>
-
-  <div class="callout callout-green">
-    <h4>Shadow Resistant</h4>
-    <p>This approach is inherently resistant to shadows and overcast conditions. Shadows reduce <em>brightness</em> but the grass retains its green <em>hue</em> &mdash; so shadowed pixels still count as green. Only frost genuinely removes green from the pitch, making the detection far more reliable than a simple saturation average.</p>
   </div>
 
   <h3>Settings</h3>
@@ -815,12 +790,11 @@
     <table>
       <thead><tr><th>Setting</th><th>Default</th><th>Description</th></tr></thead>
       <tbody>
-        <tr><td>Saturation Floor</td><td>15</td><td>Minimum colour intensity for a pixel to count as grass (frost/grey falls below this)</td></tr>
-        <tr><td>Green Threshold</td><td>25%</td><td>Minimum percentage of green pixels for the pitch to be considered clear</td></tr>
-        <tr><td>Sample Interval</td><td>2s</td><td>How often to capture and analyse a frame</td></tr>
-        <tr><td>Smoothing Frames</td><td>10</td><td>Number of frames averaged to reduce noise &mdash; higher is more stable but slower to react</td></tr>
-        <tr><td>State Change Delay</td><td>30s</td><td>Seconds a state must hold before confirming frost or clear &mdash; prevents flicker</td></tr>
-        <tr><td>ROI Regions</td><td>Configurable</td><td>Rectangles on the image focusing on specific pitch areas, with rotation support</td></tr>
+        <tr><td>Saturation Threshold</td><td>40</td><td>Below this = possible frost (frost appears desaturated)</td></tr>
+        <tr><td>Sample Interval</td><td>2s</td><td>How often to capture and analyse</td></tr>
+        <tr><td>Smoothing Frames</td><td>10</td><td>Frames averaged before detection</td></tr>
+        <tr><td>State Change Delay</td><td>30s</td><td>Delay before confirming a frost state change</td></tr>
+        <tr><td>ROI Regions</td><td>Configurable</td><td>Rectangles on the image focusing on specific pitch areas</td></tr>
       </tbody>
     </table>
   </div>
@@ -851,11 +825,19 @@
   <div class="card-grid cols-2">
     <div class="card">
       <h4>Building Protect</h4>
-      <p>Protects the building's heating from cold water returning from the pitch circuit. Closes the actuator when primary return drops below 45&deg;C. Re-opens when it rises above 50&deg;C. When active, pitch heating is suspended regardless of frost risk.</p>
+      <p>Protects the building's heating from cold water returning from the pitch circuit. Closes the actuator when primary return drops below the configurable threshold (default 25&deg;C). Re-opens when it rises above the open threshold (default 30&deg;C). When active, pitch heating is suspended regardless of frost risk. If frost risk is present, a <strong>CRITICAL</strong> alarm is raised.</p>
     </div>
     <div class="card">
       <h4>Forecast Override</h4>
-      <p>Compares actual measured temperature against the weather forecast. If the pitch is 5&deg;C+ colder than predicted, uses actual temperature for frost risk calculations. Catches inaccurate forecasts.</p>
+      <p>Compares actual measured temperature against the weather forecast. If the pitch is 5&deg;C+ colder than predicted, uses actual temperature for frost risk calculations. Catches inaccurate forecasts. Falls back to ambient sensor if no forecast data is available.</p>
+    </div>
+    <div class="card">
+      <h4>Emergency Override</h4>
+      <p>Configurable under Frost Protection. When soil temperature drops below the emergency threshold (default 1.0&deg;C), heating is forced ON at the emergency flow temperature (default 20&deg;C) regardless of mode. Runs in all modes. Building Protect takes priority over emergency override.</p>
+    </div>
+    <div class="card">
+      <h4>Pump Overrun</h4>
+      <p>When heating stops, secondary pumps continue running for a configurable overrun period (default 30 minutes) to dissipate residual heat. The primary side (valve, heat demand) turns off after a 30-second debounce to prevent relay bouncing.</p>
     </div>
   </div>
 
@@ -863,9 +845,10 @@
   <p>Multiple mechanisms prevent rapid on/off cycling:</p>
   <ul>
     <li><strong>Frost threshold deadband</strong> &mdash; heating turns off at threshold + deadband, not at threshold</li>
-    <li><strong>Minimum heat minutes</strong> &mdash; heating must run for at least 30 minutes before it can turn off</li>
+    <li><strong>Heat debounce</strong> &mdash; 30-second debounce on primary side to prevent relay bouncing</li>
+    <li><strong>Pump overrun</strong> &mdash; secondary pumps run for the configured overrun period after heat stops</li>
     <li><strong>Slope adjustment intervals</strong> &mdash; minimum 120 minutes between setpoint changes</li>
-    <li><strong>Building protect gap</strong> &mdash; 5&deg;C gap between close and open thresholds</li>
+    <li><strong>Building protect gap</strong> &mdash; configurable gap between close and open thresholds</li>
   </ul>
 </div>
 
@@ -888,42 +871,14 @@
     <div class="step-arrow">&rarr;</div>
     <div class="step"><div class="step-num">2</div><div class="step-title">Check Next</div><div class="step-desc">Is another session &lt; 48h away with frost risk?</div></div>
     <div class="step-arrow">&rarr;</div>
-    <div class="step"><div class="step-num">3</div><div class="step-title">Gap Learning</div><div class="step-desc">Query historical gap data for this weather band</div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-title">Maintain</div><div class="step-desc">Hold pitch at gentle 14&deg;C</div></div>
     <div class="step-arrow">&rarr;</div>
-    <div class="step"><div class="step-num">4</div><div class="step-title">Maintain</div><div class="step-desc">Hold pitch at learned setpoint or heat curve default</div></div>
-    <div class="step-arrow">&rarr;</div>
-    <div class="step"><div class="step-num">5</div><div class="step-title">Ramp Up</div><div class="step-desc">When next session window begins, increase as needed</div></div>
-  </div>
-
-  <h3>Gap Learning System</h3>
-  <p>Rather than always maintaining at a fixed temperature, SmartPitch <strong>learns from previous gaps between sessions</strong> to find the minimum maintain setpoint that keeps the soil above a safe threshold.</p>
-
-  <p>Each completed session records:</p>
-  <ul>
-    <li><strong>End soil temperatures</strong> (8cm and 25cm) &mdash; auto-filled by a database trigger when the session end time is set</li>
-    <li><strong>Maintain strategy and setpoint</strong> used during the gap</li>
-    <li><strong>Gap hours</strong> from the previous session&rsquo;s end</li>
-    <li><strong>Minimum soil temperature</strong> observed during the gap period</li>
-  </ul>
-
-  <p>This data is aggregated by the <code>gap_learning</code> database view, grouped by <code>(temp_band, soil_start_band)</code>, providing average minimum soil temperatures and pass rates for each combination.</p>
-
-  <h4>Tiered Fallback for Maintain Decisions</h4>
-  <p>When deciding the maintain setpoint, the system uses the same tiered approach as the learning system:</p>
-  <ol>
-    <li><strong>Band match</strong> &mdash; find gap learning data matching the current temperature band and soil start band</li>
-    <li><strong>Global average</strong> &mdash; if no band-specific data, use overall gap averages</li>
-    <li><strong>Fallback setpoint</strong> &mdash; if no gap data exists at all, fall back to the configured fallback (heat curve or fixed setpoint, as per Fallback Strategy settings)</li>
-  </ol>
-
-  <div class="callout callout-green">
-    <h4>Confidence Buffer</h4>
-    <p>When gap learning data exists but sessions are few, a confidence buffer is applied to the minimum safe soil temperature: <strong>+1&deg;C with 3 sessions</strong>, tapering to <strong>+0&deg;C at 10+ sessions</strong>. This ensures the system is conservative when data is limited and relaxes as confidence grows.</p>
+    <div class="step"><div class="step-num">4</div><div class="step-title">Ramp Up</div><div class="step-desc">When next session window begins, increase as needed</div></div>
   </div>
 
   <div class="callout callout-green">
     <h4>Energy Savings</h4>
-    <p>With gap learning, the maintain setpoint is often lower than the heat curve default &mdash; the system has evidence that the soil stays warm enough without aggressive heating. This saves significant energy compared to a fixed fallback temperature, while the confidence buffer ensures safety until enough data has been collected.</p>
+    <p>Maintaining a gentle 14&deg;C uses significantly less energy than a full cool-down and reheat cycle. The pitch retains thermal mass, so the ramp-up for the next session is faster and cheaper.</p>
   </div>
 
   <p>If the next session is more than 48 hours away, the system returns to MONITOR and will restart heating based on learning recommendations when the time comes.</p>
@@ -995,9 +950,10 @@
   <h3>Per-Session Energy Accumulation</h3>
   <p>In addition to the real-time energy display, SmartPitch tracks <strong>total energy consumed per heating session</strong>:</p>
 
-  <div class="code-block"><span class="cm">// Every 10-minute control cycle during heating:</span>
-<span class="hl">powerKw</span>  = flowRate * 4.186 * (priFlow - priReturn)
-<span class="hl">energy_kwh</span> += powerKw * (10 / 60)   <span class="cm">// kW * hours = kWh</span></div>
+  <div class="code-block"><span class="cm">// Every control cycle during heating (dynamic interval):</span>
+<span class="hl">powerKw</span>    = (flowRate / 60) * 4.186 * (priFlow - priReturn)
+<span class="hl">intervalH</span>  = (now - lastEnergyTs) / 3600000  <span class="cm">// ms to hours</span>
+<span class="hl">energy_kwh</span> += powerKw * intervalH</div>
 
   <ul>
     <li>Energy only accumulates when flow rate &gt; 0 and primary flow &gt; primary return</li>
@@ -1097,13 +1053,16 @@ try {
     <table>
       <thead><tr><th>Setting</th><th>Description</th><th>Default</th></tr></thead>
       <tbody>
-        <tr><td>Frost Threshold</td><td>Temperature below which frost risk triggers</td><td>0&deg;C</td></tr>
-        <tr><td>Temperature Type</td><td>Actual or Feels Like (wind chill adjusted)</td><td>Feels Like</td></tr>
-        <tr><td>Deadband</td><td>Hysteresis to prevent on/off cycling</td><td>0.5&deg;C</td></tr>
-        <tr><td>Min Heat Minutes</td><td>Minimum heating run time once activated</td><td>30 min</td></tr>
-        <tr><td>Soil Frozen Threshold</td><td>Soil temp considered frozen for pass/fail</td><td>3.5&deg;C</td></tr>
+        <tr><td>Frost Threshold</td><td>Temperature below which frost risk triggers</td><td>2&deg;C</td></tr>
+        <tr><td>Temperature Type</td><td>Actual or Feels Like (wind chill adjusted)</td><td>Real</td></tr>
+        <tr><td>Deadband</td><td>Hysteresis to prevent on/off cycling</td><td>1.5&deg;C</td></tr>
+        <tr><td>Pump Overrun</td><td>Secondary pump run time after heating stops</td><td>30 min</td></tr>
+        <tr><td>Soil Frozen Threshold</td><td>Soil temp considered frozen for pass/fail</td><td>0&deg;C</td></tr>
         <tr><td>Forecast Override</td><td>Compare actual vs forecast temperature</td><td>Enabled</td></tr>
         <tr><td>Override Threshold</td><td>Difference to trigger forecast override</td><td>5&deg;C</td></tr>
+        <tr><td>Emergency Enabled</td><td>Force heating when soil critically cold</td><td>Enabled</td></tr>
+        <tr><td>Emergency Threshold</td><td>Soil temp triggering emergency heating</td><td>1.0&deg;C</td></tr>
+        <tr><td>Emergency Flow Temp</td><td>Flow temperature during emergency</td><td>20&deg;C</td></tr>
       </tbody>
     </table>
   </div>
@@ -1121,22 +1080,48 @@ try {
     </table>
   </div>
 
-  <h3>SmartPitch Mode</h3>
+  <h3>SmartPitch Mode &mdash; Slope Tab</h3>
   <div class="table-wrap">
     <table>
       <thead><tr><th>Setting</th><th>Description</th><th>Default</th></tr></thead>
       <tbody>
-        <tr><td>Success Temperature</td><td>Target pitch temp to declare success</td><td>5.0&deg;C</td></tr>
-        <tr><td>Off-Track Slope</td><td>Falling rate that triggers safety net</td><td>-0.5&deg;C/h</td></tr>
+        <tr><td>Slope Enabled</td><td>Enable slope-based safety net</td><td>ON</td></tr>
+        <tr><td>Off-Track Slope</td><td>Falling rate (&deg;C/min) that triggers intervention</td><td>-0.4</td></tr>
         <tr><td>Evaluation Window</td><td>Time window for slope calculation</td><td>60 min</td></tr>
-        <tr><td>Emergency Threshold</td><td>Pitch temp triggering emergency intervention</td><td>1.0&deg;C</td></tr>
-        <tr><td>Safety Net Enabled</td><td>Allow slope-based intervention</td><td>ON</td></tr>
-        <tr><td>Cool Buffer Hours</td><td>Hours before reducing after success</td><td>2h</td></tr>
-        <tr><td>Soil Deficit Threshold</td><td>Soil temp below which extra heating needed</td><td>4.0&deg;C</td></tr>
-        <tr><td>Soil Deficit Flow Factor</td><td>Extra degrees per degree of soil deficit</td><td>1.0</td></tr>
-        <tr><td>Soil Deficit Lead Factor</td><td>Extra hours per degree of soil deficit</td><td>0.5</td></tr>
+        <tr><td>Max Increase Rate</td><td>Maximum setpoint increase per adjustment</td><td>1.0&deg;C</td></tr>
+        <tr><td>Max Decrease Rate</td><td>Maximum setpoint decrease per adjustment</td><td>1.0&deg;C</td></tr>
+        <tr><td>Increase Interval</td><td>Minimum minutes between setpoint increases</td><td>120 min</td></tr>
+        <tr><td>Decrease Interval</td><td>Minimum minutes between setpoint decreases</td><td>120 min</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>SmartPitch Mode &mdash; Learning Tab</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Setting</th><th>Description</th><th>Default</th></tr></thead>
+      <tbody>
+        <tr><td>Use Heat Curve</td><td>Use heat curve for fallback setpoint (vs fixed)</td><td>ON</td></tr>
+        <tr><td>Fixed Fallback Setpoint</td><td>Setpoint when heat curve is disabled</td><td>16&deg;C</td></tr>
+        <tr><td>Confidence Enabled</td><td>Enable learning confidence threshold</td><td>OFF</td></tr>
+        <tr><td>Confidence Threshold</td><td>Minimum pass rate to trust learning</td><td>70%</td></tr>
+        <tr><td>Soil Offset Enabled</td><td>Adjust setpoint/lead based on soil temp</td><td>ON</td></tr>
         <tr><td>Soil Setpoint Factor</td><td>Setpoint adjustment per degree of soil delta</td><td>0.5</td></tr>
         <tr><td>Soil Lead Factor</td><td>Lead time adjustment per degree of soil delta</td><td>0.2</td></tr>
+        <tr><td>Soil Deficit Threshold</td><td>Soil temp below which extra heating applied</td><td>4.0&deg;C</td></tr>
+        <tr><td>Soil Deficit Flow Factor</td><td>Extra degrees per degree of soil deficit</td><td>1.0</td></tr>
+        <tr><td>Soil Deficit Lead Factor</td><td>Extra hours per degree of soil deficit</td><td>0.5</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>SmartPitch Mode &mdash; Maintain Tab</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Setting</th><th>Description</th><th>Default</th></tr></thead>
+      <tbody>
+        <tr><td>Maintain Window</td><td>Max hours between sessions for maintain mode</td><td>48h</td></tr>
+        <tr><td>Maintain Soil Safe</td><td>Soil temp considered safe during gap</td><td>4.0&deg;C</td></tr>
       </tbody>
     </table>
   </div>
@@ -1146,11 +1131,13 @@ try {
     <table>
       <thead><tr><th>Setting</th><th>Location</th><th>Default</th></tr></thead>
       <tbody>
+        <tr><td>System Enable</td><td>Heating Control &gt; Mode tab (toggle)</td><td>ON</td></tr>
         <tr><td>Flow Rate</td><td>Energy tab &gt; Flow Rate card</td><td>44.1 L/s</td></tr>
         <tr><td>Energy Rate</td><td>Energy tab &gt; Energy Rate card</td><td>Configurable (p/kWh)</td></tr>
         <tr><td>Season Window</td><td>Energy tab &gt; Season Window card</td><td>1 July &ndash; 30 June</td></tr>
         <tr><td>Pitch Selection</td><td>Advanced &gt; Temperature Control</td><td>Both</td></tr>
         <tr><td>Forecast Duration</td><td>Forecast tab dropdown</td><td>72 hours</td></tr>
+        <tr><td>Site Location</td><td>Advanced &gt; Forecast Monitor (lat/lon)</td><td>Configurable coordinates</td></tr>
         <tr><td>Alarm Settings</td><td>Advanced &gt; Alarms</td><td>Configurable thresholds + email</td></tr>
       </tbody>
     </table>
@@ -1186,7 +1173,7 @@ try {
     </div>
     <div class="card">
       <h4>Heating Control</h4>
-      <p>4 sub-tabs: <strong>Mode</strong> (OFF/STANDARD/SMARTPITCH selection, learning engine status with tier/session count), <strong>Schematic</strong> (live system diagram), <strong>Frost Camera</strong> (snapshot with ROI regions, day/night mode), <strong>Advisory</strong> (plain-language system plans).</p>
+      <p>4 sub-tabs: <strong>Mode</strong> (system enable toggle, STANDARD/SMARTPITCH selection, learning engine status with tier/session count), <strong>Schematic</strong> (live system diagram), <strong>Frost Camera</strong> (snapshot with ROI regions, day/night mode), <strong>Advisory</strong> (plain-language system plans). When system is disabled, a red pulsing banner appears and mode buttons are greyed out.</p>
     </div>
     <div class="card">
       <h4>Data</h4>
@@ -1210,7 +1197,8 @@ try {
         <tr><td>Alarms</td><td>Alarm configuration &mdash; temperature thresholds, hardware fault enables, email notification settings. Active faults display with real-time status.</td></tr>
         <tr><td>Temperature Control</td><td>PID controller settings for valve actuator, pitch selection</td></tr>
         <tr><td>Heat Curve</td><td>Configure the 3-point temperature curve with knee, live chart preview</td></tr>
-        <tr><td>Settings</td><td>All configurable parameters: Standard Mode, Frost Protection, SmartPitch Mode (nested: Safety Net, Fallback Strategy, Timing, Soil Temp, Maintain)</td></tr>
+        <tr><td>Forecast Monitor</td><td>Forecast health status, stale data warnings, site location configuration (latitude/longitude)</td></tr>
+        <tr><td>Settings</td><td>All configurable parameters: Standard Mode, Frost Protection (incl. emergency override, pump overrun), SmartPitch Mode (3 tabs: Slope, Learning, Maintain)</td></tr>
       </tbody>
     </table>
   </div>
@@ -1305,6 +1293,12 @@ try {
         <tr><td><code>slope_adjustment_c</code></td><td>real</td><td>Total slope adjustment in &deg;C</td></tr>
         <tr><td><code>start_soil_temp_c</code></td><td>real</td><td>Soil temperature when session started (auto-filled from trend_log)</td></tr>
         <tr><td><code>mode</code></td><td>text</td><td>SMARTPITCH or STANDARD</td></tr>
+        <tr><td><code>end_soil_8cm_c</code></td><td>real</td><td>8cm soil temp when session ended (auto-filled by trigger)</td></tr>
+        <tr><td><code>end_soil_25cm_c</code></td><td>real</td><td>25cm soil temp when session ended (auto-filled by trigger)</td></tr>
+        <tr><td><code>maintain_strategy</code></td><td>text</td><td>Between-session strategy: stop, reduce, or maintain</td></tr>
+        <tr><td><code>maintain_setpoint_c</code></td><td>real</td><td>Setpoint used during between-session maintain</td></tr>
+        <tr><td><code>gap_hours_from_prev</code></td><td>real</td><td>Hours since previous session ended</td></tr>
+        <tr><td><code>min_soil_during_gap_c</code></td><td>real</td><td>Minimum soil temp recorded during gap</td></tr>
       </tbody>
     </table>
   </div>
@@ -1347,7 +1341,7 @@ try {
     </div>
     <div class="card">
       <h4>settings</h4>
-      <p>Key-value store with JSONB values. Keys: frost, standard, smartpitch, forecast, flow_rate, pitch_selection, heat_curve, alarm_settings.</p>
+      <p>Key-value store with JSONB values. Keys: frost, standard, smartpitch, forecast, flow_rate, pitch_selection, system_enabled, alarms.</p>
     </div>
   </div>
 
@@ -1414,6 +1408,7 @@ try {
         <tr><td><code>/api/settings</code></td><td>Update system settings</td></tr>
         <tr><td><code>/api/settings/:key</code></td><td>Update specific settings category</td></tr>
         <tr><td><code>/api/frost/settings</code></td><td>Update frost camera settings</td></tr>
+        <tr><td><code>/api/auth/change-password</code></td><td>Change GUI/API password (requires current password)</td></tr>
       </tbody>
     </table>
   </div>
@@ -1458,7 +1453,7 @@ try {
 
   <div class="card">
     <h4>Scenario 6: New System (No Learning Data)</h4>
-    <p>Zero historical sessions. Falls through all tiers to TIER5_GLOBAL &mdash; no data. Falls back to the configured fallback (heat curve by default, or fixed setpoint if heat curve is disabled). Soil deficit adds extra heating if soil is cold. Default 6h lead time. If the confidence gate is enabled, learning data is not trusted until the pass rate meets the threshold. Sessions recorded in both modes. After 3+ sessions, TIER4_1BAND provides data. System progressively improves with each session.</p>
+    <p>Zero historical sessions. Falls through all tiers to TIER5_GLOBAL &mdash; no data. Falls back to heat curve for setpoint. Soil deficit adds extra heating if soil is cold. Default 6h lead time. Sessions recorded in both modes. After 3+ sessions, TIER4_1BAND provides data. System progressively improves with each session.</p>
   </div>
 
   <div class="card">
@@ -1585,7 +1580,7 @@ try {
   </div>
 
   <h3>Node-RED Flow Structure</h3>
-  <p>The system comprises <strong>~303 nodes</strong> across <strong>5 tabs</strong>:</p>
+  <p>The system comprises <strong>~306 nodes</strong> across <strong>5 tabs</strong>:</p>
   <div class="table-wrap">
     <table>
       <thead><tr><th>Tab</th><th>Purpose</th></tr></thead>
@@ -1607,7 +1602,7 @@ try {
     </div>
     <div class="card">
       <h4>Control Logic</h4>
-      <p>~1,000 lines of JavaScript implementing the full decision tree, session recording, slope control, energy accumulation, and watchdog validation. Error-isolated for safety.</p>
+      <p>~1,270 lines of JavaScript implementing the full decision tree, session recording, slope control, energy accumulation, and watchdog validation. Error-isolated for safety.</p>
     </div>
   </div>
 
@@ -1628,68 +1623,51 @@ try {
   </div>
 
   <div class="stats">
-    <div class="stat"><div class="stat-val">~303</div><div class="stat-label">Nodes</div></div>
+    <div class="stat"><div class="stat-val">~306</div><div class="stat-label">Nodes</div></div>
     <div class="stat"><div class="stat-val">5</div><div class="stat-label">Tabs</div></div>
     <div class="stat"><div class="stat-val">30+</div><div class="stat-label">SQL CTEs</div></div>
     <div class="stat"><div class="stat-val">~9ms</div><div class="stat-label">Query Time</div></div>
   </div>
 </div>
 
-
 <!-- ========================================================================== -->
-<!--  SECTION 22 : SECURITY                                                    -->
+<!--  SECTION 22 : SECURITY                                                     -->
 <!-- ========================================================================== -->
 <div class="section" id="security">
   <div class="section-header">
     <div class="section-num">22</div>
     <div class="section-title">Security</div>
-    <h2>Authentication &amp; Access Control</h2>
+    <h2>Access Control &amp; Security</h2>
   </div>
 
-  <p>SmartPitch implements multi-layer authentication to protect both the Node-RED editor and the operational GUI/API endpoints.</p>
+  <h3>Authentication</h3>
+  <p>All access to the GUI and API requires authentication. The system uses HTTP Basic Auth with bcrypt-hashed passwords.</p>
 
-  <h3>Authentication Layers</h3>
   <div class="card-grid cols-2">
     <div class="card">
-      <h4>Editor Login (adminAuth)</h4>
-      <p>The Node-RED flow editor requires username and password authentication via the built-in <code>adminAuth</code> mechanism. Passwords are stored as bcrypt hashes in <code>settings.js</code>. This prevents unauthorised modification of the control logic.</p>
+      <h4>Operator Account</h4>
+      <p>Default credentials: <code>admin</code> / <code>smartpitch</code>. Password changeable via the GUI lock icon (top bar) without restarting the system. Changes take effect immediately for both the editor and GUI/API.</p>
     </div>
     <div class="card">
-      <h4>GUI &amp; API Login</h4>
-      <p>All operational endpoints (<code>/gui</code>, <code>/api/*</code>) are protected by a custom Express middleware that supports two authentication methods: HTTP Basic Auth for API clients and session cookies for browser users.</p>
+      <h4>Engineer Account</h4>
+      <p>A hardcoded master account (<code>engineer1</code>) provides permanent access for maintenance. This account cannot be changed via the GUI and is intended for commissioning and support.</p>
     </div>
-  </div>
-
-  <h3>Session-Based Authentication</h3>
-  <div class="steps">
-    <div class="step"><div class="step-num">1</div><div class="step-title">Login</div><div class="step-desc">User submits credentials on the styled login page</div></div>
-    <div class="step-arrow">&rarr;</div>
-    <div class="step"><div class="step-num">2</div><div class="step-title">Verify</div><div class="step-desc">Password checked against bcrypt hash via Basic Auth header</div></div>
-    <div class="step-arrow">&rarr;</div>
-    <div class="step"><div class="step-num">3</div><div class="step-title">Session</div><div class="step-desc">Secure 64-byte session token issued as cookie (7-day expiry)</div></div>
-    <div class="step-arrow">&rarr;</div>
-    <div class="step"><div class="step-num">4</div><div class="step-title">Access</div><div class="step-desc">Subsequent requests authenticated via session cookie</div></div>
   </div>
 
   <h3>Security Measures</h3>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Measure</th><th>Implementation</th></tr></thead>
-      <tbody>
-        <tr><td>Editor Authentication</td><td><code>adminAuth</code> with bcrypt-hashed passwords in <code>settings.js</code></td></tr>
-        <tr><td>API Authentication</td><td>Custom <code>httpNodeMiddleware</code> with Basic Auth + session cookie support</td></tr>
-        <tr><td>Credential Encryption</td><td><code>credentialSecret</code> set to encrypt any credentials stored in Node-RED flows</td></tr>
-        <tr><td>Database Password</td><td>Stored as environment variable (<code>PGPASSWORD</code>) rather than plaintext in flows</td></tr>
-        <tr><td>Diagnostics Endpoint</td><td>Disabled to prevent information disclosure via <code>/diagnostics</code></td></tr>
-        <tr><td>Session Management</td><td>In-memory session store with automatic hourly cleanup of expired tokens</td></tr>
-        <tr><td>Static Files</td><td>Public assets (HTML, CSS, JS, images) bypass auth to allow the login page to load</td></tr>
-      </tbody>
-    </table>
-  </div>
+  <ul>
+    <li><strong>Session tokens</strong> &mdash; browser sessions use secure random tokens (24-hour expiry) stored server-side</li>
+    <li><strong>Credential storage</strong> &mdash; passwords stored as bcrypt hashes in <code>auth.json</code>, never in plain text</li>
+    <li><strong>Database credentials</strong> &mdash; PostgreSQL password stored in environment variable, not in flow configuration</li>
+    <li><strong>Credential secret</strong> &mdash; Node-RED credential encryption enabled with a random 32-character key</li>
+    <li><strong>Parameterised queries</strong> &mdash; all SQL queries use parameterised inputs to prevent injection</li>
+    <li><strong>Diagnostics disabled</strong> &mdash; Node-RED diagnostics endpoint is disabled in production</li>
+    <li><strong>Static file passthrough</strong> &mdash; only HTML/CSS/JS/image files served without auth; all API data is protected</li>
+  </ul>
 
   <div class="callout callout-amber">
     <h4>Network Considerations</h4>
-    <p>HTTPS is not implemented directly on the Node-RED instance. On an isolated local network this is acceptable, but for internet-facing deployments a reverse proxy (e.g. nginx with Let&rsquo;s Encrypt) should be placed in front of the system to provide TLS encryption.</p>
+    <p>SmartPitch communicates over HTTP on the local network. For internet-facing installations, a reverse proxy (e.g. Nginx) with TLS/HTTPS should be placed in front of the system. Rate limiting on API endpoints is not currently implemented.</p>
   </div>
 </div>
 
@@ -1697,7 +1675,7 @@ try {
 <hr class="divider">
 <div class="footer">
   <span>SmartPitch</span> &mdash; Intelligent Pitch Frost Protection &amp; Heating System<br>
-  Technical Documentation &bull; Updated 17 February 2026 &bull; v3.1
+  Technical Documentation &bull; Updated 20 February 2026 &bull; v4.0
 </div>
 
 </div><!-- /container -->
